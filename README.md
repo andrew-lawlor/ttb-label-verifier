@@ -47,9 +47,18 @@ Assumptions and trade-offs (also covered in `SPEC.md` §2-4):
   layout and where that could break. The Claude vision alternative is kept
   working precisely so a real production conversation isn't starting from
   scratch.
-- No persistent database — batch results live in memory for the life of
-  the process, consistent with "we're not storing anything sensitive for
-  this exercise."
+- **No persistent database — batch results live in memory for the life of
+  the process.** This is consistent with "we're not storing anything
+  sensitive for this exercise," but has a real consequence worth stating
+  plainly: a batch job's progress and results do not survive a process
+  restart, and this deployment assumes a single instance (there's no shared
+  store, so a second instance polling `GET /api/verify/batch/{id}` for a
+  batch submitted to the first instance would get a 404). Fine for a
+  single-instance prototype; a real production deployment behind a
+  load balancer or on a platform that restarts/rescales instances would
+  need a shared store (e.g. Postgres or Redis) behind that endpoint —
+  not SQLite, which is itself single-file/single-writer and wouldn't
+  actually solve the multi-instance case either.
 - Poor-quality/skewed/glare-y photos are a known weak point of the default
   OCR backend (confirmed against `testdata/labels/09_low_quality_blurry.jpg`,
   which fails extraction rather than reading through the noise) — called
