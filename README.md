@@ -148,7 +148,10 @@ up stray text from the adjacent field labels.
 The batch page needs a CSV alongside the label images, mapping each
 image's filename to its application data. No `government_warning` column —
 every label is checked against the one federally-required text
-automatically (see "Approach, in brief" above):
+automatically (see "Approach, in brief" above). A downloadable template
+(`internal/webassets/web/static/manifest-template.csv`, linked from the
+batch page) opens fine in Excel — it stays a valid CSV as long as it's
+edited and saved in place, not "Save As"'d to a different format:
 
 ```csv
 filename,brand_name,class_type,alcohol_content,net_contents
