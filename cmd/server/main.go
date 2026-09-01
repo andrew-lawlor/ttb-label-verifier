@@ -54,9 +54,17 @@ func main() {
 		log.Fatalf("unknown EXTRACTION_BACKEND %q (want %q or %q)", backend, backendOCR, backendClaude)
 	}
 
+	var pdfExtractor server.BrandNameExtractor
+	if _, err := exec.LookPath("pdftoppm"); err != nil {
+		log.Println("warning: pdftoppm not found — application-PDF brand-name pre-fill will be disabled " +
+			"(install poppler-utils to enable it); label verification is unaffected")
+	} else {
+		pdfExtractor = extract.NewPDFForm()
+	}
+
 	batchMgr := batch.NewManager(extractor)
 
-	srv, err := server.New(extractor, batchMgr, webassets.TemplatesFS, webassets.StaticFS)
+	srv, err := server.New(extractor, pdfExtractor, batchMgr, webassets.TemplatesFS, webassets.StaticFS)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}

@@ -1,4 +1,12 @@
-{{/* Shared fragments used by result_fragment.html and batch_status_fragment.html. */}}
+{{/* Shared fragments used by result_fragment.html, batch_status_fragment.html, and index.html. */}}
+
+{{define "brand_name_field"}}
+  <div id="brand_name_field">
+    <label for="brand_name">Brand Name</label>
+    <input type="text" id="brand_name" name="brand_name" value="{{.Value}}" required>
+    {{if .Note}}<p class="help">{{.Note}}</p>{{end}}
+  </div>
+{{end}}
 
 {{define "verdict_banner"}}
   <div class="banner {{verdictClass .OverallVerdict}}">

@@ -57,21 +57,31 @@ func (c *OCRClient) Extract(ctx context.Context, imageBytes []byte, mediaType st
 	}
 	defer os.Remove(tmpPath)
 
-	cmd := exec.CommandContext(ctx, c.binary, tmpPath, "stdout", "tsv", "--psm", "6")
-	out, err := cmd.Output()
+	lines, err := runTesseractTSV(ctx, c.binary, tmpPath, "6")
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
-			return model.ExtractedFields{}, fmt.Errorf("tesseract failed: %w (stderr: %s)", err, string(ee.Stderr))
-		}
-		return model.ExtractedFields{}, fmt.Errorf("tesseract failed: %w", err)
+		return model.ExtractedFields{}, err
 	}
-
-	lines := parseTSVLines(string(out))
 	if len(lines) == 0 {
 		return model.ExtractedFields{}, ErrUnreadableImage
 	}
 
 	return fieldsFromLines(lines), nil
+}
+
+// runTesseractTSV runs tesseract against an image file already on disk and
+// returns the reconstructed lines. Shared by OCRClient (full label, psm 6 —
+// "a uniform block of text") and the PDF brand-name extractor (a single
+// cropped line, psm 7 — "treat the image as a single text line").
+func runTesseractTSV(ctx context.Context, binary, imagePath, psm string) ([]ocrLine, error) {
+	cmd := exec.CommandContext(ctx, binary, imagePath, "stdout", "tsv", "--psm", psm)
+	out, err := cmd.Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("tesseract failed: %w (stderr: %s)", err, string(ee.Stderr))
+		}
+		return nil, fmt.Errorf("tesseract failed: %w", err)
+	}
+	return parseTSVLines(string(out)), nil
 }
 
 func writeTempImage(data []byte, mediaType string) (string, error) {
@@ -82,16 +92,7 @@ func writeTempImage(data []byte, mediaType string) (string, error) {
 	case "image/webp":
 		ext = ".webp"
 	}
-	f, err := os.CreateTemp("", "ttb-label-*"+ext)
-	if err != nil {
-		return "", fmt.Errorf("create temp file for ocr: %w", err)
-	}
-	defer f.Close()
-	if _, err := f.Write(data); err != nil {
-		os.Remove(f.Name())
-		return "", fmt.Errorf("write temp file for ocr: %w", err)
-	}
-	return f.Name(), nil
+	return writeTempFile(data, ext)
 }
 
 // ocrLine is one reconstructed line of text from tesseract's word-level

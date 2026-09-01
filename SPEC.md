@@ -104,7 +104,60 @@ approach could move past prototype.
   the only place an LLM is used. Comparison is deterministic, fast, and
   auditable (agents can see exactly why something failed).
 
-## 6. Field matching rules
+## 6. Application-PDF ingestion (TTB Form 5100.31)
+
+Added after inspecting the real TTB application form
+([F 5100.31](https://www.ttb.gov/system/files/images/pdfs/forms/f510031.pdf)),
+which the take-home brief itself never provides — this was independent
+research, not something the exercise handed us. Worth stating plainly what
+that inspection found, because it reframes what "extract application data
+from the PDF" can actually mean:
+
+- **The real form has no field for class/type, alcohol content, net
+  contents, or the government warning.** Item 5 is a coarse checkbox (Wine
+  / Distilled Spirits / Malt Beverages), not a class/type designation. The
+  rest of the page is a big empty box: "AFFIX COMPLETE SET OF LABELS
+  BELOW" — TTB reads those four fields straight off the physically-affixed
+  label, the same object our separate label-image upload already covers.
+- **Item 6, Brand Name, is the one field that genuinely exists on the form
+  as independent application data** — the only field with two real
+  sources to compare, which is what the brief's fictional Dave-interview
+  example ("STONE'S THROW" on the label vs. "Stone's Throw" on the
+  application) is actually simplifying.
+- **The form instructs applicants to print, sign in ink, and mail it in
+  duplicate.** A submitted PDF is far more likely to be a scan of a filled
+  paper form than a still-fillable PDF with live AcroForm field values —
+  so this reads the rendered page like an image (crop + OCR), the same
+  approach as label extraction, rather than trying to read form-field
+  values a scan wouldn't have.
+
+**What's built:** an optional PDF upload on the single-label page
+(`internal/extract/pdfform.go`) that rasterizes page 1 (`pdftoppm`), crops
+a fixed pixel region around Item 6 (coordinates derived from the form's own
+PDF text positions — see the constants and comments in that file), and OCRs
+just that crop to pre-fill the Brand Name field. The agent still reviews
+and can edit it before submitting — same "never silently trusted"
+principle as every other extracted value in this app. It's additive, not a
+replacement: the label-image upload stays required, since that's still the
+only real source for the other four fields.
+
+**Deliberately not built:** auto-locating and cropping the physically
+affixed label out of the PDF as an alternative to the direct photo upload.
+Glued-label placement and size vary per real submission — a much less
+reliable computer-vision problem than what the brief actually asks for,
+and out of scope for this exercise's time-box.
+
+**Known limitation:** the crop coordinates are hardcoded against the
+04/2023 revision of this specific form; a different revision or a
+meaningfully skewed scan could shift the field out of the cropped region.
+Validated against `testdata/ttb-form/f510031.pdf` (the real blank form —
+`TestExtractBrandNameFromBlankForm` confirms the crop doesn't bleed into
+adjacent label text) and, since no real filled submission was available to
+test against, against a synthetic single-page PDF with known text placed
+at the same field coordinates (see commit history / test comments for that
+account) — both read back correctly.
+
+## 7. Field matching rules
 
 | Field | Match type | Notes |
 |---|---|---|
@@ -120,32 +173,34 @@ just pass/fail, addressing Dave's "you need judgment" concern by keeping a
 human in the loop for the "needs review" band rather than pretending the
 tool is 100% authoritative.
 
-## 7. API sketch
+## 8. API sketch
 
 - `POST /api/verify` — multipart: one label image + application fields (JSON). Synchronous, returns verdict in ~5s.
 - `POST /api/verify/batch` — multipart: N label images + a manifest (CSV/JSON mapping filename → application fields). Returns a `batch_id` immediately.
 - `GET /api/verify/batch/{id}` — poll for progress (`completed/total`) and results as they land.
+- `POST /api/extract-brand-name` — multipart: one application PDF. Returns the Brand Name form field pre-filled (or a "couldn't find it" note), for the agent to review before the actual `/api/verify` submission. Single-label page only — see §6.
 - Batch worker pool: bounded concurrency (e.g. 10-20 in flight) against the vision API, so 200-300 labels finish in a couple of minutes rather than serially at ~5s each (~25 min).
 
-## 8. Error handling
+## 9. Error handling
 
 - Unreadable/corrupt image → explicit "could not read label" result, not a silent fail.
 - Low-confidence extraction (model itself flags uncertainty) → surfaced as "needs review," same as the fuzzy mid-band.
 - Partial batch failure → batch keeps going; failed items are reported individually, one bad file doesn't kill the run.
 
-## 9. Deployment
+## 10. Deployment
 
 - Containerized Go binary, deployed to Fly.io or Cloud Run (single small always-on or scale-to-zero instance is enough for a prototype).
-- Anthropic API key via platform secret/env var, never committed.
+- Container needs `tesseract-ocr` (label extraction) and `poppler-utils` (application-PDF brand-name pre-fill) installed alongside the Go binary — neither is statically linked in.
+- Anthropic API key via platform secret/env var, never committed — only needed if `EXTRACTION_BACKEND=claude`.
 - Deliverables: public GitHub repo + live deployed URL, per the brief.
 
-## 10. Stretch goals (only if core is solid and time remains)
+## 11. Stretch goals (only if core is solid and time remains)
 
 - Basic image-quality pre-check (blur/glare) with a friendly re-upload prompt — Jenny's ask, explicitly optional.
 - CSV export of batch results.
 - Confidence visualization in the UI (color-coded pass/review/fail).
 
-## 11. Non-goals reminder
+## 12. Non-goals reminder
 
 Per the brief's own evaluation criteria: a complete, clean core beats an
 ambitious but partial build. Batch + single-label verification with solid

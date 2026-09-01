@@ -37,6 +37,14 @@ a design decision, is in [`SPEC.md`](./SPEC.md).
   (15 concurrent extraction calls), with htmx polling the job for progress
   — 200-300 labels finish in a couple of minutes instead of ~25 minutes
   processed one at a time.
+- **Optional application-PDF upload pre-fills Brand Name** on the
+  single-label page. Not in the brief — added after inspecting the real
+  [TTB Form 5100.31](https://www.ttb.gov/system/files/images/pdfs/forms/f510031.pdf),
+  which turns out to have no field at all for class/type, alcohol content,
+  net contents, or the government warning — only Brand Name exists as
+  independent application data; everything else lives only on the
+  physically-affixed label. See `SPEC.md` §6 for the full finding and why
+  the feature is scoped to just that one field.
 
 Assumptions and trade-offs (also covered in `SPEC.md` §2-4):
 
@@ -68,11 +76,13 @@ Assumptions and trade-offs (also covered in `SPEC.md` §2-4):
 
 ## Setup
 
-Requires Go 1.24+ and, for the default OCR backend, Tesseract:
+Requires Go 1.24+, Tesseract (default OCR backend), and Poppler (the
+optional application-PDF brand-name pre-fill — the rest of the app works
+fine without it, that one feature just disables itself):
 
 ```bash
 # Debian/Ubuntu
-sudo apt-get install -y tesseract-ocr
+sudo apt-get install -y tesseract-ocr poppler-utils
 
 cp .env.example .env   # defaults to EXTRACTION_BACKEND=ocr, no API key needed
 ```
@@ -111,6 +121,16 @@ conversion, a deliberately mismatched label, and a blurry/angled photo. See
 `testdata/labels/EXPECTATIONS.md` for the expected verdict on each one. Feed
 the whole set through the batch upload page as a quick end-to-end check.
 
+## Application PDF (TTB Form 5100.31)
+
+On the single-label page, an optional PDF upload extracts just the Brand
+Name field (Item 6) and pre-fills the form for review — the one field the
+real form actually provides as independent application data. See
+`SPEC.md` §6 for why the other four fields aren't attempted from the PDF.
+`testdata/ttb-form/f510031.pdf` is the real blank form, used by
+`internal/extract/pdfform_test.go` to confirm the crop region doesn't pick
+up stray text from the adjacent field labels.
+
 ## Batch manifest format
 
 The batch page needs a CSV alongside the label images, mapping each
@@ -123,12 +143,14 @@ label-1.jpg,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,7
 
 ## Deployment
 
-Single static Go binary plus the `tesseract` runtime dependency (the
-default OCR backend shells out to it — it's not statically linked in).
-Containerize with `tesseract-ocr` installed in the image and deploy to any
-platform that runs a container (Fly.io, Cloud Run, Render, etc.). No
-secrets required in the default configuration; set `EXTRACTION_BACKEND=claude`
-and `ANTHROPIC_API_KEY` as a platform secret only if switching backends.
+Single static Go binary plus two runtime dependencies it shells out to,
+neither statically linked in: `tesseract` (label OCR) and `pdftoppm` from
+`poppler-utils` (application-PDF pre-fill — optional, the app runs fine
+without it). Containerize with `tesseract-ocr` and `poppler-utils`
+installed in the image and deploy to any platform that runs a container
+(Fly.io, Cloud Run, Render, etc.). No secrets required in the default
+configuration; set `EXTRACTION_BACKEND=claude` and `ANTHROPIC_API_KEY` as a
+platform secret only if switching backends.
 
 ```bash
 go build -o server ./cmd/server

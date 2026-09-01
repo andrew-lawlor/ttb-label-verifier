@@ -29,9 +29,22 @@
       </fieldset>
 
       <fieldset>
+        <legend>Application PDF (optional)</legend>
+        <label for="application_pdf">TTB Form 5100.31, if you have it</label>
+        <input type="file" id="application_pdf" name="application_pdf" accept="application/pdf"
+               hx-post="/api/extract-brand-name" hx-trigger="change" hx-target="#brand_name_field"
+               hx-swap="outerHTML" hx-encoding="multipart/form-data">
+        <p class="help">
+          Fills in Brand Name below from the form automatically — that's the
+          only field the real application form actually has that also
+          appears on the label. Everything else is read straight off the
+          label photo either way, so it stays a separate field.
+        </p>
+      </fieldset>
+
+      <fieldset>
         <legend>Application Data</legend>
-        <label for="brand_name">Brand Name</label>
-        <input type="text" id="brand_name" name="brand_name" required>
+        {{template "brand_name_field" .}}
 
         <label for="class_type">Class / Type</label>
         <input type="text" id="class_type" name="class_type" required>

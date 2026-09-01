@@ -26,28 +26,44 @@ import (
 // request, per SPEC.md section 2 ("about 5 seconds, or nobody uses it").
 const verifyTimeout = 9 * time.Second
 
+// pdfExtractTimeout bounds the optional application-PDF brand-name lookup.
+// Generous relative to verifyTimeout since it's a separate, best-effort
+// pre-fill request, not on the critical path of the verify itself.
+const pdfExtractTimeout = 15 * time.Second
+
 type Extractor interface {
 	Extract(ctx context.Context, imageBytes []byte, mediaType string) (model.ExtractedFields, error)
 }
 
-type Server struct {
-	extractor Extractor
-	batch     *batch.Manager
-	templates *template.Template
-	mux       *http.ServeMux
+// BrandNameExtractor pulls Brand Name off an uploaded TTB Form 5100.31 PDF
+// — see internal/extract/pdfform.go for why that's the only field a real
+// submitted form actually provides. Optional: a nil BrandNameExtractor
+// disables the PDF upload feature (e.g. pdftoppm isn't installed) without
+// affecting the rest of the app.
+type BrandNameExtractor interface {
+	ExtractBrandName(ctx context.Context, pdfBytes []byte) (model.FieldExtraction, error)
 }
 
-func New(extractor Extractor, batchMgr *batch.Manager, templatesFS embed.FS, staticFS embed.FS) (*Server, error) {
+type Server struct {
+	extractor    Extractor
+	pdfExtractor BrandNameExtractor
+	batch        *batch.Manager
+	templates    *template.Template
+	mux          *http.ServeMux
+}
+
+func New(extractor Extractor, pdfExtractor BrandNameExtractor, batchMgr *batch.Manager, templatesFS embed.FS, staticFS embed.FS) (*Server, error) {
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templatesFS, "web/templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
 
 	s := &Server{
-		extractor: extractor,
-		batch:     batchMgr,
-		templates: tmpl,
-		mux:       http.NewServeMux(),
+		extractor:    extractor,
+		pdfExtractor: pdfExtractor,
+		batch:        batchMgr,
+		templates:    tmpl,
+		mux:          http.NewServeMux(),
 	}
 
 	staticSub, err := staticServeFS(staticFS)
@@ -59,6 +75,7 @@ func New(extractor Extractor, batchMgr *batch.Manager, templatesFS embed.FS, sta
 	s.mux.HandleFunc("GET /", s.handleIndex)
 	s.mux.HandleFunc("GET /batch", s.handleBatchPage)
 	s.mux.HandleFunc("POST /api/verify", s.handleVerify)
+	s.mux.HandleFunc("POST /api/extract-brand-name", s.handleExtractBrandName)
 	s.mux.HandleFunc("POST /api/verify/batch", s.handleVerifyBatch)
 	s.mux.HandleFunc("GET /api/verify/batch/{id}", s.handleBatchStatus)
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
@@ -76,7 +93,63 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "index.html", nil)
+	s.render(w, "index.html", brandNameFieldView{})
+}
+
+// brandNameFieldView renders the "brand_name_field" partial: the Brand
+// Name label+input, either empty (initial page load) or pre-filled from
+// an uploaded PDF, with a short note explaining what happened.
+type brandNameFieldView struct {
+	Value string
+	Note  string
+}
+
+// handleExtractBrandName reads Item 6 off an uploaded TTB Form 5100.31 PDF
+// and returns the brand_name field pre-filled for the agent to review —
+// never submitted directly, always a suggestion the human can edit before
+// the actual verify request.
+func (s *Server) handleExtractBrandName(w http.ResponseWriter, r *http.Request) {
+	if s.pdfExtractor == nil {
+		s.render(w, "brand_name_field", brandNameFieldView{
+			Note: "PDF reading isn't available on this deployment — enter the brand name manually.",
+		})
+		return
+	}
+
+	if err := r.ParseMultipartForm(20 << 20); err != nil {
+		s.render(w, "brand_name_field", brandNameFieldView{Note: "Could not read the uploaded PDF."})
+		return
+	}
+
+	file, _, err := r.FormFile("application_pdf")
+	if err != nil {
+		s.render(w, "brand_name_field", brandNameFieldView{}) // no file selected — nothing to do
+		return
+	}
+	defer file.Close()
+
+	const maxPDFSize = 20 << 20 // 20MB
+	data, err := io.ReadAll(io.LimitReader(file, maxPDFSize+1))
+	if err != nil || len(data) > maxPDFSize {
+		s.render(w, "brand_name_field", brandNameFieldView{Note: "PDF too large or unreadable (max 20MB)."})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), pdfExtractTimeout)
+	defer cancel()
+
+	result, err := s.pdfExtractor.ExtractBrandName(ctx, data)
+	if err != nil || result.Value == "" {
+		s.render(w, "brand_name_field", brandNameFieldView{
+			Note: "Couldn't find a brand name on that form — enter it manually.",
+		})
+		return
+	}
+
+	s.render(w, "brand_name_field", brandNameFieldView{
+		Value: result.Value,
+		Note:  "Extracted from the uploaded PDF — please review before submitting.",
+	})
 }
 
 func (s *Server) handleBatchPage(w http.ResponseWriter, r *http.Request) {
