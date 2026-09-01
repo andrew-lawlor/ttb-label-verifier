@@ -16,7 +16,13 @@ a design decision, is in [`SPEC.md`](./SPEC.md).
 ## Approach, in brief
 
 - **Go backend, server-rendered HTML + [htmx](https://htmx.org) frontend.**
-  No SPA framework, no JS build step, single static binary to deploy.
+  No SPA framework, no JS build step, single static binary to deploy. Worth
+  noting for a government deployment specifically: no runtime interpreter
+  or framework overhead, and htmx's zero-build-step client, mean a
+  meaningfully smaller hosting footprint than a typical Python/Node + SPA
+  stack — most directly a cost saving on a metered/serverless platform
+  (billed per CPU-second), mostly headroom rather than a direct saving on
+  a fixed-cost VPS like the one this is actually deployed on.
 - **Extraction defaults to local OCR (Tesseract), not a cloud vision API.**
   This app is deployed at a public URL for evaluation, and a paid API with
   no auth in front of it is an open-ended cost/abuse vector — anyone who
