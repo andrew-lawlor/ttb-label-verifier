@@ -221,10 +221,21 @@ default.
 
 ## 10. Deployment
 
-- Containerized Go binary, deployed to Fly.io or Cloud Run (single small always-on or scale-to-zero instance is enough for a prototype).
-- Container needs `tesseract-ocr` (label extraction) and `poppler-utils` (application-PDF brand-name pre-fill) installed alongside the Go binary — neither is statically linked in.
-- Anthropic API key via platform secret/env var, never committed — only needed if `EXTRACTION_BACKEND=claude`.
-- Deliverables: public GitHub repo + live deployed URL, per the brief.
+- Deployed via Docker Compose on a Debian VPS (Hetzner) rather than a
+  managed container platform (Fly.io/Cloud Run) — a deliberate choice, not
+  a default. The app's own design already assumes a single always-on
+  instance with in-memory batch state (§"No persistent database" in
+  README), which a plain VPS satisfies by construction with nothing to
+  configure; a managed platform's scale-to-zero behavior (Cloud Run's
+  default, Render's free tier) would risk killing an in-flight batch and
+  needs an explicit always-on setting to avoid. What a VPS gives up in
+  exchange — managed TLS, managed process supervision, push-to-deploy — is
+  covered by `caddy` (automatic Let's Encrypt) and Docker Compose's
+  `restart: unless-stopped` in this repo's `docker-compose.yml`.
+- Container needs `tesseract-ocr` (label extraction) and `poppler-utils` (application-PDF brand-name pre-fill) installed alongside the Go binary — neither is statically linked in. Handled in `Dockerfile`.
+- The same `Dockerfile` also works unchanged on Fly.io/Cloud Run/Render if a managed platform is preferred later — the VPS choice is about this specific deployment, not a constraint baked into the app itself.
+- Anthropic API key via a real secret (`.env`, gitignored), never committed — only needed if `EXTRACTION_BACKEND=claude`.
+- Deliverables: public GitHub repo + live deployed URL, per the brief. See `DEPLOY.md` for the exact runbook.
 
 ## 11. Stretch goals (only if core is solid and time remains)
 

@@ -153,15 +153,19 @@ label-1.jpg,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,7
 
 ## Deployment
 
-Single static Go binary plus two runtime dependencies it shells out to,
-neither statically linked in: `tesseract` (label OCR) and `pdftoppm` from
-`poppler-utils` (application-PDF pre-fill — optional, the app runs fine
-without it). Containerize with `tesseract-ocr` and `poppler-utils`
-installed in the image and deploy to any platform that runs a container
-(Fly.io, Cloud Run, Render, etc.). No secrets required in the default
-configuration; set `EXTRACTION_BACKEND=claude` and `ANTHROPIC_API_KEY` as a
-platform secret only if switching backends.
+Deployed via Docker Compose on a Debian VPS: an `app` service (this repo's
+`Dockerfile` — Go binary plus the two runtime dependencies it shells out
+to, `tesseract-ocr` and `poppler-utils`, neither statically linked) behind
+a `caddy` service that terminates TLS automatically (Let's Encrypt) for a
+subdomain pointed at the VPS. See [`DEPLOY.md`](./DEPLOY.md) for the exact
+runbook. No secrets required in the default configuration; set
+`EXTRACTION_BACKEND=claude` and `ANTHROPIC_API_KEY` as real secrets
+(not committed) only if switching backends.
+
+The same `Dockerfile` works unchanged on Fly.io, Cloud Run, or any other
+container platform, if a managed-TLS/managed-supervision platform is
+preferred over VPS ops — see `SPEC.md` §10 for that trade-off.
 
 ```bash
-go build -o server ./cmd/server
+docker compose up -d --build
 ```
