@@ -1,0 +1,4 @@
+/server
+/ttb-label-verifier
+*.test
+.env

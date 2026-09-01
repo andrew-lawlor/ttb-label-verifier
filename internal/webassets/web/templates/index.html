@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TTB Label Check</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>TTB Label Check</h1>
+    <nav>
+      <a href="/">Single Label</a>
+      <a href="/batch">Batch Upload</a>
+    </nav>
+  </header>
+  <main>
+    <p class="help">
+      Upload a photo of the label and enter what's on the application.
+      We'll tell you what matches, what doesn't, and what needs a second look.
+    </p>
+
+    <form hx-post="/api/verify" hx-target="#result" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+      <fieldset>
+        <legend>Label Photo</legend>
+        <label for="label_image">Label image (JPEG, PNG, or WebP)</label>
+        <input type="file" id="label_image" name="label_image" accept="image/jpeg,image/png,image/webp" required>
+      </fieldset>
+
+      <fieldset>
+        <legend>Application Data</legend>
+        <label for="brand_name">Brand Name</label>
+        <input type="text" id="brand_name" name="brand_name" required>
+
+        <label for="class_type">Class / Type</label>
+        <input type="text" id="class_type" name="class_type" required>
+
+        <label for="alcohol_content">Alcohol Content</label>
+        <input type="text" id="alcohol_content" name="alcohol_content" placeholder="e.g. 45% Alc./Vol. (90 Proof)" required>
+
+        <label for="net_contents">Net Contents</label>
+        <input type="text" id="net_contents" name="net_contents" placeholder="e.g. 750 mL" required>
+
+        <label for="government_warning">Government Warning (exact text on file)</label>
+        <textarea id="government_warning" name="government_warning" required></textarea>
+      </fieldset>
+
+      <button type="submit">Check This Label</button>
+      <div class="htmx-indicator">Checking label&hellip;</div>
+    </form>
+
+    <div id="result"></div>
+  </main>
+</body>
+</html>

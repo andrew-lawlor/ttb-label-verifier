@@ -1,0 +1,37 @@
+<div id="batch-status"
+     {{if not .Done}}hx-get="/api/verify/batch/{{.ID}}" hx-trigger="every 2s" hx-swap="outerHTML"{{end}}>
+
+  {{if .Done}}
+    <div class="banner pass">Done — {{.Completed}} of {{.Total}} labels checked</div>
+  {{else}}
+    <p><strong>Checking labels&hellip; {{.Completed}} of {{.Total}} done</strong></p>
+    <div class="progress-bar"><div class="progress-bar-fill" style="width: {{progressPercent .Completed .Total}}%"></div></div>
+  {{end}}
+
+  {{if .Done}}
+  <table class="results">
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Overall</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Results}}
+      <tr>
+        <td>{{.Filename}}</td>
+        <td><span class="tag {{verdictClass .OverallVerdict}}">{{verdictLabel .OverallVerdict}}</span></td>
+        <td>
+          {{if .Error}}
+            {{.Error}}
+          {{else}}
+            {{range .Fields}}{{if ne .Verdict "pass"}}{{fieldLabel .Field}}: {{.Detail}}<br>{{end}}{{end}}
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>

@@ -1,0 +1,6 @@
+{{if .Error}}
+  <div class="error">Could not check this label: {{.Error}}</div>
+{{else}}
+  {{template "verdict_banner" .}}
+  {{template "fields_table" .Fields}}
+{{end}}

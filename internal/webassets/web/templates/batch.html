@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TTB Label Check — Batch</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>TTB Label Check</h1>
+    <nav>
+      <a href="/">Single Label</a>
+      <a href="/batch">Batch Upload</a>
+    </nav>
+  </header>
+  <main>
+    <p class="help">
+      For big batches: upload every label photo at once, plus one manifest
+      file that lists the application data for each one. We'll check them
+      all and show progress as results come in.
+    </p>
+
+    <form hx-post="/api/verify/batch" hx-target="#batch-status" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+      <fieldset>
+        <legend>Label Photos</legend>
+        <label for="label_images">Label images (select all at once)</label>
+        <input type="file" id="label_images" name="label_images" accept="image/jpeg,image/png,image/webp" multiple required>
+      </fieldset>
+
+      <fieldset>
+        <legend>Manifest</legend>
+        <label for="manifest">Manifest CSV</label>
+        <input type="file" id="manifest" name="manifest" accept=".csv,text/csv" required>
+        <p class="help">
+          Columns required: <code>filename, brand_name, class_type, alcohol_content, net_contents, government_warning</code>.
+          The <code>filename</code> value must match each uploaded image's filename exactly.
+        </p>
+      </fieldset>
+
+      <button type="submit">Start Batch Check</button>
+      <div class="htmx-indicator">Uploading batch&hellip;</div>
+    </form>
+
+    <div id="batch-status"></div>
+  </main>
+</body>
+</html>

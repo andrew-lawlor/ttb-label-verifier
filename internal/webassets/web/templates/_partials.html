@@ -1,0 +1,32 @@
+{{/* Shared fragments used by result_fragment.html and batch_status_fragment.html. */}}
+
+{{define "verdict_banner"}}
+  <div class="banner {{verdictClass .OverallVerdict}}">
+    Overall: {{verdictLabel .OverallVerdict}}
+  </div>
+{{end}}
+
+{{define "fields_table"}}
+  <table class="results">
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Application Says</th>
+        <th>Label Reads</th>
+        <th>Result</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .}}
+      <tr>
+        <td>{{fieldLabel .Field}}</td>
+        <td>{{.ApplicationValue}}</td>
+        <td>{{.ExtractedValue}}</td>
+        <td><span class="tag {{verdictClass .Verdict}}">{{verdictLabel .Verdict}}</span></td>
+        <td>{{.Detail}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+{{end}}

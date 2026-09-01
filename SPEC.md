@@ -58,9 +58,13 @@ approach could move past prototype.
 
 - **Backend**: Go, single static binary. stdlib `net/http` (or `chi`) is
   enough — no need for a heavier framework at this scope.
-- **Frontend**: one static HTML page + vanilla JS (or htmx). No SPA
-  framework — reduces surface area and matches the "obvious, no hunting for
-  buttons" requirement.
+- **Frontend**: server-rendered HTML via Go `html/template` + [htmx](https://htmx.org)
+  (vendored locally, not CDN-loaded — consistent with treating outbound
+  dependencies as a liability per Marcus's firewall story). No SPA
+  framework, no JS build step. htmx's polling (`hx-trigger="every 2s"`)
+  drives the batch-progress view directly against `GET /api/verify/batch/{id}`
+  without any client-side state management — a natural fit for the "obvious,
+  no hunting for buttons" requirement.
 - **Extraction**: one Claude vision API call per label image, using tool-use
   / structured output to force a JSON shape (`brand_name`, `class_type`,
   `alcohol_content`, `net_contents`, `government_warning_text`,

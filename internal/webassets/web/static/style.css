@@ -1,0 +1,159 @@
+/* Deliberately plain and high-contrast — per the brief, this needs to be
+   usable by the least technical agent on the team, not the most. */
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #f7f7f5;
+  margin: 0;
+  padding: 0 1rem 3rem;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 0;
+  border-bottom: 3px solid #1a1a1a;
+  margin-bottom: 2rem;
+}
+
+header h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+nav a {
+  font-size: 1.1rem;
+  margin-left: 1.5rem;
+  color: #0b4f8a;
+  text-decoration: none;
+  font-weight: 600;
+}
+nav a:hover { text-decoration: underline; }
+
+main {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+fieldset {
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+legend {
+  font-weight: 700;
+  padding: 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+input[type="text"],
+input[type="file"],
+textarea {
+  width: 100%;
+  font-size: 1rem;
+  padding: 0.6rem;
+  border: 2px solid #999;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+textarea { min-height: 5rem; }
+
+button {
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 0.9rem 1.75rem;
+  margin-top: 1.5rem;
+  background: #0b4f8a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+button:hover { background: #083c69; }
+button:disabled { background: #999; cursor: wait; }
+
+.htmx-indicator { display: none; font-size: 1.1rem; margin-top: 1rem; }
+.htmx-request .htmx-indicator { display: block; }
+.htmx-request.htmx-indicator { display: block; }
+
+.banner {
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 1.5rem 0 1rem;
+}
+.banner.pass   { background: #e3f6e6; color: #14622c; border: 2px solid #14622c; }
+.banner.review { background: #fff6de; color: #8a6300; border: 2px solid #8a6300; }
+.banner.fail   { background: #fdecec; color: #9c1c1c; border: 2px solid #9c1c1c; }
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background: white;
+}
+table.results th, table.results td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+  font-size: 0.95rem;
+  vertical-align: top;
+}
+table.results th { background: #eee; }
+
+.tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.tag.pass   { background: #e3f6e6; color: #14622c; }
+.tag.review { background: #fff6de; color: #8a6300; }
+.tag.fail   { background: #fdecec; color: #9c1c1c; }
+
+.error {
+  background: #fdecec;
+  color: #9c1c1c;
+  border: 2px solid #9c1c1c;
+  padding: 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 1.5rem;
+  background: #eee;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: #0b4f8a;
+}
+
+.help {
+  color: #555;
+  font-size: 0.9rem;
+}
