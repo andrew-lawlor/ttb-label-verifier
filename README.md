@@ -49,6 +49,14 @@ a design decision, is in [`SPEC.md`](./SPEC.md).
   (15 concurrent extraction calls), with htmx polling the job for progress
   — 200-300 labels finish in a couple of minutes instead of ~25 minutes
   processed one at a time.
+- **Batch manifest defaults to filling in application data per label on
+  the page itself**, filenames read from the selected files rather than
+  typed — the original CSV-only design required typing an exact filename
+  per row, which was both tedious and actively misleading on a typo (a
+  mismatched filename silently produced a full field-by-field failure
+  indistinguishable from a label that genuinely failed every check). CSV
+  upload is still available for genuine bulk workflows. See "Batch
+  manifest" below and `SPEC.md` §7.
 - **Optional application-PDF upload pre-fills Brand Name** on the
   single-label page. Not in the brief — added after inspecting the real
   [TTB Form 5100.31](https://www.ttb.gov/system/files/images/pdfs/forms/f510031.pdf),
@@ -153,10 +161,14 @@ there's nothing to mismatch. This is a client-side-only feature
 step) that builds the same CSV manifest under the hood and submits through
 the same existing endpoint — no server changes were needed for it.
 
-**CSV upload is still available** (toggle link on the page) for a genuine
-bulk workflow where the data already exists in a spreadsheet — mapping
-each image's filename to its application data. No `government_warning`
-column — every label is checked against the one federally-required text
+**CSV upload is still available** via a single toggle control on the page
+(one always-visible button whose label flips between "Have a CSV manifest
+instead?" and "Back to filling in details per label," rather than two
+separate links in different places — an earlier version of that toggle had
+no reliable way back to row mode without reloading) for a genuine bulk
+workflow where the data already exists in a spreadsheet — mapping each
+image's filename to its application data. No `government_warning` column —
+every label is checked against the one federally-required text
 automatically (see "Approach, in brief" above). A downloadable template
 (`internal/webassets/web/static/manifest-template.csv`, linked from the
 batch page) opens fine in Excel — it stays a valid CSV as long as it's
@@ -168,6 +180,14 @@ rather than a misleading full-field mismatch:
 filename,brand_name,class_type,alcohol_content,net_contents
 label-1.jpg,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,750 mL
 ```
+
+**Results are per-field, not just per-label.** Each row in the batch
+results table expands (click to reveal, collapsed by default so a large
+batch stays scannable) into the same field-by-field breakdown the
+single-label page shows — application value, extracted value, and
+verdict for all five fields, including the ones that passed. An earlier
+version only showed detail for failing fields, so a fully-passing label
+showed nothing to check at all.
 
 ## Deployment
 

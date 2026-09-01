@@ -177,10 +177,10 @@ mistyped this" error. Fixed at two levels:
    with the filename read straight from each selected `File` object —
    there's nothing to type or mismatch, because the filename is never
    manually entered at all in this mode. CSV upload remains available
-   (toggle link) for a genuine bulk workflow where the data already
-   exists in a spreadsheet from another source; for that path, the
-   downloadable template (§ below) plus the new explicit-error behavior
-   are what address the burden.
+   (single toggle control — see below) for a genuine bulk workflow where
+   the data already exists in a spreadsheet from another source; for that
+   path, the downloadable template (§ below) plus the new explicit-error
+   behavior are what address the burden.
 
 **Implementation note, and an honest testing gap:** this app has zero
 third-party JS dependencies (only htmx, vendored) — the per-row UI is
