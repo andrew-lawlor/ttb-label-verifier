@@ -186,6 +186,25 @@ removes a real failure mode the editable-field version had: an agent
 mistyping or pasting a stale copy of the warning would previously fail a
 label that actually complied.
 
+**Why class/type, alcohol content, and net contents weren't collapsed the
+same way**, even though the real TTB form doesn't have independent fields
+for those either (§6) — same situation as the warning: the brief's own
+fictional interview notes never frame the warning as an "application says
+X, label says Y" comparison, only as something that must be exact. Class/
+type and ABV get the opposite treatment: Sarah says outright, *"Brand name
+matches? Check. ABV is correct? Check,"* and Dave's whole anecdote is a
+label-vs-application comparison. The brief is explicitly asking for a
+matching tool on those three fields, even though the real form doesn't
+actually support that model. Rebuilding them into "derive from the label,
+validate against regulatory rules" instead — which the real-world research
+would arguably support — would mean overriding the brief's explicit ask
+based on research it never asked for, a materially bigger and riskier move
+than the warning-field change. That one was justified because the brief
+itself never pretended there was an application-side value to compare
+there; these three don't have that same justification. Kept as manual
+entry (plus the PDF pre-fill for brand name, §6) on purpose, not by
+default.
+
 ## 8. API sketch
 
 - `POST /api/verify` — multipart: one label image + application fields (JSON). Synchronous, returns verdict in ~5s.
