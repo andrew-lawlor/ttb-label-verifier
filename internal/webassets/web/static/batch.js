@@ -13,143 +13,155 @@
 // submit". That sidesteps any question of whether this script's listeners
 // run before or after htmx's own submit handling -- by the time a submit
 // happens, the data this script owns is simply already correct.
+//
+// Mode switching is a single always-visible control (not two separate
+// links in different places) whose label reflects the current mode, and
+// everything below is wrapped in try/catch that surfaces a visible error
+// instead of failing silently -- this runs with no browser available to
+// test it interactively, so a loud failure beats a quiet one.
 (function () {
   "use strict";
 
-  const imagesInput = document.getElementById("label_images");
-  const rowsSection = document.getElementById("rows-section");
-  const rowsContainer = document.getElementById("per-image-rows");
-  const csvSection = document.getElementById("csv-upload-section");
-  const csvInput = document.getElementById("manifest_csv_input");
-  const hiddenManifestInput = document.getElementById("manifest_hidden");
-  const toggleToCsv = document.getElementById("toggle-csv-mode");
-  const toggleToRows = document.getElementById("toggle-row-mode");
+  try {
+    const imagesInput = document.getElementById("label_images");
+    const rowsSection = document.getElementById("rows-section");
+    const rowsContainer = document.getElementById("per-image-rows");
+    const csvSection = document.getElementById("csv-upload-section");
+    const csvInput = document.getElementById("manifest_csv_input");
+    const hiddenManifestInput = document.getElementById("manifest_hidden");
+    const modeToggle = document.getElementById("mode-toggle");
 
-  const MANIFEST_FIELDS = ["brand_name", "class_type", "alcohol_content", "net_contents"];
-  const FIELD_LABELS = {
-    brand_name: "Brand Name",
-    class_type: "Class / Type",
-    alcohol_content: "Alcohol Content",
-    net_contents: "Net Contents",
-  };
-  const FIELD_PLACEHOLDERS = {
-    alcohol_content: "e.g. 45% Alc./Vol. (90 Proof)",
-    net_contents: "e.g. 750 mL",
-  };
+    const MANIFEST_FIELDS = ["brand_name", "class_type", "alcohol_content", "net_contents"];
+    const FIELD_LABELS = {
+      brand_name: "Brand Name",
+      class_type: "Class / Type",
+      alcohol_content: "Alcohol Content",
+      net_contents: "Net Contents",
+    };
+    const FIELD_PLACEHOLDERS = {
+      alcohol_content: "e.g. 45% Alc./Vol. (90 Proof)",
+      net_contents: "e.g. 750 mL",
+    };
 
-  let mode = "rows";
+    let mode = "rows";
 
-  function setMode(newMode) {
-    mode = newMode;
-    if (mode === "rows") {
-      rowsSection.hidden = false;
-      csvSection.hidden = true;
-      hiddenManifestInput.name = "manifest";
-      csvInput.name = "";
-      csvInput.required = false;
-      syncHiddenManifestFromRows();
-    } else {
-      rowsSection.hidden = true;
-      csvSection.hidden = false;
-      csvInput.name = "manifest";
-      csvInput.required = true;
-      hiddenManifestInput.name = "";
-    }
-  }
-
-  // Renders one row of inputs per selected image, filename taken directly
-  // from the File object -- never typed, so it can never drift from what's
-  // actually being uploaded.
-  function renderRows() {
-    rowsContainer.textContent = "";
-    const files = imagesInput.files || [];
-
-    if (files.length === 0) {
-      const p = document.createElement("p");
-      p.className = "help";
-      p.textContent = "Select label images above to fill in details for each one here.";
-      rowsContainer.appendChild(p);
-      return;
+    function setMode(newMode) {
+      mode = newMode;
+      if (mode === "rows") {
+        rowsSection.hidden = false;
+        csvSection.hidden = true;
+        hiddenManifestInput.name = "manifest";
+        csvInput.name = "";
+        csvInput.required = false;
+        modeToggle.textContent = "Have a CSV manifest instead? Upload it here.";
+        syncHiddenManifestFromRows();
+      } else {
+        rowsSection.hidden = true;
+        csvSection.hidden = false;
+        csvInput.name = "manifest";
+        csvInput.required = true;
+        hiddenManifestInput.name = "";
+        modeToggle.textContent = "Back to filling in details per label instead.";
+      }
     }
 
-    for (const file of files) {
-      const row = document.createElement("fieldset");
-      row.className = "manifest-row";
-      row.dataset.filename = file.name;
+    // Renders one row of inputs per selected image, filename taken
+    // directly from the File object -- never typed, so it can never drift
+    // from what's actually being uploaded.
+    function renderRows() {
+      rowsContainer.textContent = "";
+      const files = imagesInput.files || [];
 
-      const legend = document.createElement("legend");
-      legend.textContent = file.name;
-      row.appendChild(legend);
+      if (files.length === 0) {
+        const p = document.createElement("p");
+        p.className = "help";
+        p.textContent = "Select label images above to fill in details for each one here.";
+        rowsContainer.appendChild(p);
+        return;
+      }
 
-      for (const field of MANIFEST_FIELDS) {
-        const label = document.createElement("label");
-        label.textContent = FIELD_LABELS[field];
+      for (const file of files) {
+        const row = document.createElement("fieldset");
+        row.className = "manifest-row";
+        row.dataset.filename = file.name;
 
-        const input = document.createElement("input");
-        input.type = "text";
-        input.className = "row-" + field;
-        input.required = true;
-        if (FIELD_PLACEHOLDERS[field]) {
-          input.placeholder = FIELD_PLACEHOLDERS[field];
+        const legend = document.createElement("legend");
+        legend.textContent = file.name;
+        row.appendChild(legend);
+
+        for (const field of MANIFEST_FIELDS) {
+          const label = document.createElement("label");
+          label.textContent = FIELD_LABELS[field];
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.className = "row-" + field;
+          input.required = true;
+          if (FIELD_PLACEHOLDERS[field]) {
+            input.placeholder = FIELD_PLACEHOLDERS[field];
+          }
+          input.addEventListener("input", syncHiddenManifestFromRows);
+
+          label.appendChild(input);
+          row.appendChild(label);
         }
-        input.addEventListener("input", syncHiddenManifestFromRows);
 
-        label.appendChild(input);
-        row.appendChild(label);
+        rowsContainer.appendChild(row);
       }
-
-      rowsContainer.appendChild(row);
     }
-  }
 
-  // RFC 4180 CSV field escaping, matching what the server's
-  // encoding/csv-based parser expects.
-  function csvEscape(value) {
-    const s = String(value == null ? "" : value);
-    if (/[",\r\n]/.test(s)) {
-      return '"' + s.replace(/"/g, '""') + '"';
-    }
-    return s;
-  }
-
-  function buildManifestCSV() {
-    const lines = [["filename"].concat(MANIFEST_FIELDS).map(csvEscape).join(",")];
-    const rows = rowsContainer.querySelectorAll(".manifest-row");
-    for (const row of rows) {
-      const values = [row.dataset.filename];
-      for (const field of MANIFEST_FIELDS) {
-        const input = row.querySelector(".row-" + field);
-        values.push(input ? input.value : "");
+    // RFC 4180 CSV field escaping, matching what the server's
+    // encoding/csv-based parser expects.
+    function csvEscape(value) {
+      const s = String(value == null ? "" : value);
+      if (/[",\r\n]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
       }
-      lines.push(values.map(csvEscape).join(","));
+      return s;
     }
-    return lines.join("\r\n") + "\r\n";
-  }
 
-  function syncHiddenManifestFromRows() {
-    if (mode !== "rows") {
-      return;
+    function buildManifestCSV() {
+      const lines = [["filename"].concat(MANIFEST_FIELDS).map(csvEscape).join(",")];
+      const rows = rowsContainer.querySelectorAll(".manifest-row");
+      for (const row of rows) {
+        const values = [row.dataset.filename];
+        for (const field of MANIFEST_FIELDS) {
+          const input = row.querySelector(".row-" + field);
+          values.push(input ? input.value : "");
+        }
+        lines.push(values.map(csvEscape).join(","));
+      }
+      return lines.join("\r\n") + "\r\n";
     }
-    const csvText = buildManifestCSV();
-    const file = new File([csvText], "manifest.csv", { type: "text/csv" });
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    hiddenManifestInput.files = dt.files;
-  }
 
-  imagesInput.addEventListener("change", function () {
-    renderRows();
-    syncHiddenManifestFromRows();
-  });
+    function syncHiddenManifestFromRows() {
+      if (mode !== "rows") {
+        return;
+      }
+      const csvText = buildManifestCSV();
+      const file = new File([csvText], "manifest.csv", { type: "text/csv" });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      hiddenManifestInput.files = dt.files;
+    }
 
-  toggleToCsv.addEventListener("click", function (e) {
-    e.preventDefault();
-    setMode("csv");
-  });
-  toggleToRows.addEventListener("click", function (e) {
-    e.preventDefault();
+    imagesInput.addEventListener("change", function () {
+      renderRows();
+      syncHiddenManifestFromRows();
+    });
+
+    modeToggle.addEventListener("click", function () {
+      setMode(mode === "rows" ? "csv" : "rows");
+    });
+
     setMode("rows");
-  });
-
-  setMode("rows");
+  } catch (err) {
+    const main = document.querySelector("main") || document.body;
+    const div = document.createElement("div");
+    div.className = "error";
+    div.textContent = "Batch page script failed to initialize (" + err.message + "). " +
+      "The CSV-upload path may still work; try reloading, or use the CSV manifest option below.";
+    main.prepend(div);
+    console.error("batch.js failed to initialize:", err);
+  }
 })();

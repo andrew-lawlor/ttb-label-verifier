@@ -43,15 +43,15 @@
           there's nothing to type or mismatch there.
         </p>
 
+        <p class="help">
+          <button type="button" id="mode-toggle" class="link-button">Have a CSV manifest instead? Upload it here.</button>
+        </p>
+
         <div id="rows-section">
           <div id="per-image-rows">
             <p class="help">Select label images above to fill in details for each one here.</p>
           </div>
         </div>
-
-        <p class="help">
-          <a href="#" id="toggle-csv-mode">Have a CSV manifest instead? Upload it here.</a>
-        </p>
 
         <div id="csv-upload-section" hidden>
           <label for="manifest_csv_input">Manifest CSV</label>
@@ -63,7 +63,6 @@
             one federally-required text (27 CFR § 16.21) automatically.
             <a href="/static/manifest-template.csv" download>Download a template</a>.
           </p>
-          <p class="help"><a href="#" id="toggle-row-mode">Back to filling in details per label instead</a></p>
         </div>
 
         <!-- Actual submitted field. Never shown or filled in directly by a

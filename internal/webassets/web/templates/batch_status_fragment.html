@@ -26,7 +26,10 @@
           {{if .Error}}
             {{.Error}}
           {{else}}
-            {{range .Fields}}{{if ne .Verdict "pass"}}{{fieldLabel .Field}}: {{.Detail}}<br>{{end}}{{end}}
+            <details>
+              <summary>{{if eq .OverallVerdict "pass"}}All fields passed{{else}}See what didn't match{{end}}</summary>
+              {{template "fields_table" .Fields}}
+            </details>
           {{end}}
         </td>
       </tr>

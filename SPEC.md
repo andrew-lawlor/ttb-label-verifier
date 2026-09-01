@@ -202,6 +202,25 @@ reachable anyway through a single-line `<input type="text">`. The DOM/
 event-wiring side was carefully reviewed but not run in an actual browser
 — worth a manual click-through before relying on it.
 
+**That gap was real**: real-browser testing turned up two things
+code review alone had missed. (1) The results table only ever showed
+detail for *failing* fields — a fully-passing row showed nothing at all,
+no visibility into what actually matched. Fixed by making every row
+expandable (`<details>`, reusing the same `fields_table` partial the
+single-label page already uses) so the full per-field breakdown — pass or
+fail — is always available, just collapsed by default for scannability
+across a large batch. (2) The CSV-mode toggle had no reliable way back to
+row mode without reloading the page. The two separate links (one always
+visible above the CSV section, one buried inside it) were the likely
+cause — not a confirmed JS crash, but a plausible source of the exact
+confusion reported, and either way a worse design than necessary. Replaced
+both with one always-visible control whose label reflects the current
+mode, removing the asymmetry rather than trying to root-cause it further
+without browser access. Also added a top-level try/catch that surfaces
+any future init failure as a visible on-page error instead of a silent
+one, given the standing constraint that this can't be tested interactively
+here.
+
 ## 8. Field matching rules
 
 | Field | Match type | Notes |

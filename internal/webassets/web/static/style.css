@@ -124,6 +124,27 @@ button {
 button:hover { background: #083c69; }
 button:disabled { background: #999; cursor: wait; }
 
+.link-button {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0;
+  margin-top: 0;
+  background: none;
+  color: #0b4f8a;
+  border: none;
+  border-radius: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-button:hover { background: none; color: #083c69; }
+
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #0b4f8a;
+}
+details table.results { margin-top: 0.5rem; }
+
 .htmx-indicator { display: none; font-size: 1.1rem; margin-top: 1rem; }
 .htmx-request .htmx-indicator { display: block; }
 .htmx-request.htmx-indicator { display: block; }
