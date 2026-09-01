@@ -17,9 +17,13 @@ the stack.
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y docker.io docker-compose
+sudo apt-get install -y docker.io docker-cli docker-compose
 sudo systemctl enable --now docker
 ```
+
+(On Debian 13/trixie, `docker.io` ships only the daemon — `docker-cli` is a
+separate package for the client. Without it, `docker` isn't on PATH even
+though the daemon is installed and running.)
 
 **3. Firewall.** Open 80 and 443 (Caddy needs both — 80 for the ACME
 HTTP-01 challenge and redirect, 443 for the actual TLS traffic). Leave SSH

@@ -6,6 +6,8 @@ government warning — and reports what matches, what's off, and what needs a
 human to look at it. Built for the take-home described in
 [treasurytakehome-rgb/instructions](https://github.com/treasurytakehome-rgb/instructions).
 
+**Live deployment:** https://ttb-poc.lawlor.io
+
 Full design rationale, including how each requirement in the brief maps to
 a design decision, is in [`SPEC.md`](./SPEC.md).
 
