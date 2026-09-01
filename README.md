@@ -73,6 +73,20 @@ go test ./...
 go test -race ./...   # batch worker pool concurrency
 ```
 
+## Test labels
+
+`testdata/labels/` has 11 synthetic label images plus a matching
+`manifest.csv`, generated with `testdata/generate_labels.py` (Pillow —
+`pip install pillow`, then `python3 testdata/generate_labels.py`). They're
+rendered rather than pulled from an external image generator so the
+ground-truth text is exact and each case targets a specific rule or edge
+case straight from the take-home's interview notes — brand-name casing
+(Dave's "STONE'S THROW" example), a government-warning title-case rejection
+(Jenny's example), ABV/proof-notation equivalence, net-contents unit
+conversion, a deliberately mismatched label, and a blurry/angled photo. See
+`testdata/labels/EXPECTATIONS.md` for the expected verdict on each one. Feed
+the whole set through the batch upload page as a quick end-to-end check.
+
 ## Batch manifest format
 
 The batch page needs a CSV alongside the label images, mapping each
