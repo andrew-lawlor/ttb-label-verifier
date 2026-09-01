@@ -1,3 +1,5 @@
+<img src="internal/webassets/web/static/logo.png" alt="" width="80" height="80">
+
 # TTB Label Verification Prototype
 
 A small tool that checks an alcohol label photo against the application

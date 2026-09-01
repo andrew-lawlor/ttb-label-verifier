@@ -27,6 +27,15 @@ header h1 {
   margin: 0;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.brand img {
+  display: block;
+}
+
 nav a {
   font-size: 1.1rem;
   margin-left: 1.5rem;
