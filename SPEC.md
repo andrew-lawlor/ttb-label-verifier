@@ -235,6 +235,16 @@ default.
 - Container needs `tesseract-ocr` (label extraction) and `poppler-utils` (application-PDF brand-name pre-fill) installed alongside the Go binary — neither is statically linked in. Handled in `Dockerfile`.
 - The same `Dockerfile` also works unchanged on Fly.io/Cloud Run/Render if a managed platform is preferred later — the VPS choice is about this specific deployment, not a constraint baked into the app itself.
 - Anthropic API key via a real secret (`.env`, gitignored), never committed — only needed if `EXTRACTION_BACKEND=claude`.
+- **Rate-limited at the Caddy layer**: `POST /api/*` (the OCR/PDF-extraction
+  endpoints — real CPU cost per request) capped at 10 requests/minute per
+  client IP, via a custom Caddy build with the `mholt/caddy-ratelimit`
+  plugin (`Caddy.Dockerfile`). This is the same reasoning that drove
+  defaulting to local OCR over a cloud API in the first place: a public,
+  unauthenticated URL is an open-ended abuse surface, and CPU exhaustion
+  from repeated OCR calls is a real vector even with no paid API to run up.
+  Scoped by HTTP method so it doesn't catch `GET
+  /api/verify/batch/{id}` — htmx polls that every 2s during a batch, and
+  catching it in the same limit would break the progress UI.
 - Deliverables: public GitHub repo + live deployed URL, per the brief. See `DEPLOY.md` for the exact runbook.
 
 ## 11. Stretch goals (only if core is solid and time remains)

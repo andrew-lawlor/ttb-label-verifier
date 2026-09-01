@@ -49,10 +49,12 @@ cd ttb-label-verifier
 docker compose up -d --build
 ```
 
-First run will take a minute (base image pulls + `apt-get install
-tesseract-ocr poppler-utils` in the build). Caddy will request a
-certificate for `ttb-poc.lawlor.io` automatically once it can reach the
-`app` container and the DNS record resolves.
+First run will take a couple of minutes — `app`'s build context installs
+`tesseract-ocr`/`poppler-utils`, and `caddy`'s build compiles a custom
+Caddy binary from source via `xcaddy` (see "Rate limiting" below) rather
+than pulling a stock image, which is the slower part (~2 min). Caddy will
+request a certificate for `ttb-poc.lawlor.io` automatically once it can
+reach the `app` container and the DNS record resolves.
 
 **Verify:**
 
@@ -69,10 +71,28 @@ git pull
 docker compose up -d --build
 ```
 
-Compose only rebuilds the `app` image if its build context changed;
-`caddy` is untouched (and keeps its issued certificate — it's in the
-`caddy_data` named volume, which survives redeploys and container
-restarts).
+**Caution, verified the hard way:** editing `docker-compose.yml` itself
+(not just a service's build context) can cause Compose to recreate *every*
+service, not just the one you touched — it invalidates the project's
+per-service config hash regardless of which service the YAML change was
+about. Don't assume a change scoped to one service's file is actually
+scoped to that service's container; run `docker compose up -d --build
+<service>` for a single service the same as always, but check `docker
+compose images` / container creation timestamps afterward if you need to
+be sure something else wasn't also recreated. (Rebuilding `caddy` doesn't
+lose its certificate either way — that's in the `caddy_data` named volume,
+independent of the container lifecycle.)
+
+## Rate limiting
+
+`caddy` is a custom build (`Caddy.Dockerfile`, via `xcaddy`) with the
+[`mholt/caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit) plugin
+— not in Caddy core. See `Caddyfile` for the config: `POST /api/*` (the
+OCR/PDF-extraction endpoints) is limited to 10 requests/minute per client
+IP, scoped by method so it does not affect `GET /api/verify/batch/{id}`
+(htmx polls that every 2s during a batch — catching it in the same limit
+would break the progress UI). Verified live: an 11th rapid POST gets
+`429`, the polling endpoint and page loads are unaffected throughout.
 
 ## Switching to the Claude vision backend
 

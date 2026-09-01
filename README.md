@@ -161,8 +161,12 @@ Deployed via Docker Compose on a Debian VPS: an `app` service (this repo's
 `Dockerfile` — Go binary plus the two runtime dependencies it shells out
 to, `tesseract-ocr` and `poppler-utils`, neither statically linked) behind
 a `caddy` service that terminates TLS automatically (Let's Encrypt) for a
-subdomain pointed at the VPS. See [`DEPLOY.md`](./DEPLOY.md) for the exact
-runbook. No secrets required in the default configuration; set
+subdomain pointed at the VPS. Caddy is a custom build
+(`Caddy.Dockerfile`) with a rate-limit plugin capping the OCR/PDF
+endpoints at 10 requests/minute per IP — a public unauthenticated URL is
+an open-ended abuse surface, same reasoning as defaulting to local OCR
+over a paid API in the first place. See [`DEPLOY.md`](./DEPLOY.md) for the
+exact runbook. No secrets required in the default configuration; set
 `EXTRACTION_BACKEND=claude` and `ANTHROPIC_API_KEY` as real secrets
 (not committed) only if switching backends.
 

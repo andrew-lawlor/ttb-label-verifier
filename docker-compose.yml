@@ -8,7 +8,9 @@ services:
       - "8080"
 
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: Caddy.Dockerfile
     restart: unless-stopped
     ports:
       - "80:80"
