@@ -28,6 +28,11 @@ const (
 	backendClaude = "claude"
 )
 
+// version is the git commit SHA this binary was built from, injected via
+// -ldflags "-X main.version=..." at build time (see Dockerfile). Stays
+// "dev" for a plain `go run`/`go build`, which is expected and fine.
+var version = "dev"
+
 func main() {
 	backend := os.Getenv("EXTRACTION_BACKEND")
 	if backend == "" {
@@ -64,10 +69,11 @@ func main() {
 
 	batchMgr := batch.NewManager(extractor)
 
-	srv, err := server.New(extractor, pdfExtractor, batchMgr, webassets.TemplatesFS, webassets.StaticFS)
+	srv, err := server.New(extractor, pdfExtractor, batchMgr, webassets.TemplatesFS, webassets.StaticFS, version)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
+	log.Printf("version: %s", version)
 
 	addr := ":" + port()
 	httpServer := &http.Server{

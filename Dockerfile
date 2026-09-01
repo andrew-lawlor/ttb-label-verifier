@@ -5,7 +5,12 @@ FROM golang:1.24-bookworm AS build
 WORKDIR /src
 COPY go.mod ./
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /out/server ./cmd/server
+# GIT_SHA is passed in from outside the build context (.git is excluded via
+# .dockerignore) -- see docker-compose.yml and DEPLOY.md. Exposed at
+# GET /version at runtime so "is the server running the latest code" is
+# checkable without SSHing in.
+ARG GIT_SHA=unknown
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.version=${GIT_SHA}" -o /out/server ./cmd/server
 
 # Runtime stage: the OCR backend shells out to `tesseract` and `pdftoppm`
 # (poppler-utils) — neither is statically linked, so both need to be

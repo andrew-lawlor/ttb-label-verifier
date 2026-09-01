@@ -50,12 +50,22 @@ type Server struct {
 	batch        *batch.Manager
 	templates    *template.Template
 	mux          *http.ServeMux
+	version      string
 }
 
-func New(extractor Extractor, pdfExtractor BrandNameExtractor, batchMgr *batch.Manager, templatesFS embed.FS, staticFS embed.FS) (*Server, error) {
+// New wires up the HTTP handlers. version is the git commit SHA the
+// running binary was built from (injected at build time — see Dockerfile
+// and DEPLOY.md), exposed at GET /version so "is the server running the
+// latest code" is answerable without SSHing in to check by hand. "dev" if
+// unset (e.g. `go run` during local development).
+func New(extractor Extractor, pdfExtractor BrandNameExtractor, batchMgr *batch.Manager, templatesFS embed.FS, staticFS embed.FS, version string) (*Server, error) {
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templatesFS, "web/templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
+	}
+
+	if version == "" {
+		version = "dev"
 	}
 
 	s := &Server{
@@ -64,6 +74,7 @@ func New(extractor Extractor, pdfExtractor BrandNameExtractor, batchMgr *batch.M
 		batch:        batchMgr,
 		templates:    tmpl,
 		mux:          http.NewServeMux(),
+		version:      version,
 	}
 
 	staticSub, err := staticServeFS(staticFS)
@@ -79,6 +90,7 @@ func New(extractor Extractor, pdfExtractor BrandNameExtractor, batchMgr *batch.M
 	s.mux.HandleFunc("POST /api/verify/batch", s.handleVerifyBatch)
 	s.mux.HandleFunc("GET /api/verify/batch/{id}", s.handleBatchStatus)
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
+	s.mux.HandleFunc("GET /version", s.handleVersion)
 
 	return s, nil
 }
@@ -90,6 +102,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
+}
+
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte(s.version + "\n"))
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

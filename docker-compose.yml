@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
     environment:
       - EXTRACTION_BACKEND=ocr

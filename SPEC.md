@@ -211,6 +211,7 @@ default.
 - `POST /api/verify/batch` — multipart: N label images + a manifest (CSV/JSON mapping filename → application fields). Returns a `batch_id` immediately.
 - `GET /api/verify/batch/{id}` — poll for progress (`completed/total`) and results as they land.
 - `POST /api/extract-brand-name` — multipart: one application PDF. Returns the Brand Name form field pre-filled (or a "couldn't find it" note), for the agent to review before the actual `/api/verify` submission. Single-label page only — see §6.
+- `GET /version` — the git commit SHA the running binary was built from (injected at build time via `-ldflags`, empty/`dev` for a plain local `go run`). Deploys here are manual (`git pull` + `docker compose up -d --build` on the VPS, no CI/CD), so this is how "is the server running the latest code" gets answered without SSHing in to compare by hand — see `DEPLOY.md` "Checking what's running."
 - Batch worker pool: bounded concurrency (e.g. 10-20 in flight) against the vision API, so 200-300 labels finish in a couple of minutes rather than serially at ~5s each (~25 min).
 
 ## 9. Error handling

@@ -34,20 +34,33 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 ```
 
-**4. Get the code onto the VPS** — either clone directly if the repo is
-pushed somewhere reachable from the VPS, or rsync a local copy:
+**4. Get the code onto the VPS.** The repo is public on GitHub — clone it
+directly rather than copying files by hand, so `git pull` is a real
+redeploy mechanism rather than something the runbook claims but the actual
+checkout can't do:
 
 ```bash
-git clone <repo-url> ttb-label-verifier
-# or: rsync -az --exclude .git ./ user@vps-host:ttb-label-verifier/
-cd ttb-label-verifier
+apt-get install -y git
+git clone https://github.com/andrew-lawlor/ttb-label-verifier.git /opt/ttb-label-verifier
+cd /opt/ttb-label-verifier
 ```
+
+(Earlier revisions of this file suggested `rsync`/`tar` as an alternative
+before this repo existed on GitHub. Don't — a copied-by-hand checkout has
+no way to `git pull`, silently breaking the "Redeploy" section below
+without any error to notice. Verified the hard way: that's exactly what
+happened on the first real deploy, before this repo was pushed.)
 
 ## Deploy
 
 ```bash
-docker compose up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
 ```
+
+`GIT_SHA` gets baked into the binary (`-ldflags -X main.version=...`,
+see `Dockerfile`) and exposed at `GET /version` — see "Checking what's
+running" below. Omitting it just leaves the binary reporting `unknown`;
+it doesn't break anything, but always set it for a real deploy.
 
 First run will take a couple of minutes — `app`'s build context installs
 `tesseract-ocr`/`poppler-utils`, and `caddy`'s build compiles a custom
@@ -68,8 +81,25 @@ curl -sI https://ttb-poc.lawlor.io/healthz
 
 ```bash
 git pull
-docker compose up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
 ```
+
+## Checking what's running
+
+There's no CI/CD here — every deploy is this manual `git pull` +
+`docker compose up -d --build` sequence, run deliberately by a person, not
+triggered automatically by a push to GitHub. That's a fine fit for this
+prototype's scale, but it means "is the server running the latest code" is
+a real question with no automatic answer, not something to assume. Check:
+
+```bash
+curl -s https://ttb-poc.lawlor.io/version   # commit SHA the running binary was built from
+git -C /opt/ttb-label-verifier rev-parse --short HEAD   # commit SHA of the checkout on disk
+```
+
+If those two don't match, either the last `docker compose up -d --build`
+was run without `GIT_SHA` set (binary reports `unknown`) or a `git pull`
+landed after the last deploy and hasn't been built+deployed yet.
 
 **Caution, verified the hard way:** editing `docker-compose.yml` itself
 (not just a service's build context) can cause Compose to recreate *every*
@@ -112,7 +142,7 @@ before redeploying. Never commit the `.env` file itself.
 
 ```bash
 git checkout <previous-commit-or-tag>
-docker compose up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
 ```
 
 ## Known limitation carried from the app design
