@@ -13,10 +13,17 @@ a design decision, is in [`SPEC.md`](./SPEC.md).
 
 - **Go backend, server-rendered HTML + [htmx](https://htmx.org) frontend.**
   No SPA framework, no JS build step, single static binary to deploy.
-- **One Claude vision API call per label** extracts fields with a
-  structured tool-call schema (not free-form text parsing) — this is what
-  keeps single-label verification within the ~5 second budget the brief
-  calls out as a hard requirement (a prior vendor pilot failed here).
+- **Extraction defaults to local OCR (Tesseract), not a cloud vision API.**
+  This app is deployed at a public URL for evaluation, and a paid API with
+  no auth in front of it is an open-ended cost/abuse vector — anyone who
+  finds the URL can run it up, not just the intended evaluators. OCR is
+  free per request, has zero outbound dependency, and deterministically
+  fits the ~5 second budget the brief calls out as a hard requirement (a
+  prior vendor pilot failed on exactly this). Claude vision is still
+  implemented and available via `EXTRACTION_BACKEND=claude` — more robust
+  on poor-quality photos, the better choice behind real auth/rate-limiting,
+  and a one-env-var swap since both backends implement the same interface.
+  See `SPEC.md` §5 for the full reasoning and its trade-offs.
 - **Comparison logic is plain Go, not another LLM call** — deterministic,
   fast, and the reasoning is visible to the agent (raw values + similarity
   score + explanation), not a black box.
@@ -35,26 +42,34 @@ Assumptions and trade-offs (also covered in `SPEC.md` §2-4):
 
 - No COLA integration — this is a standalone prototype, as the brief
   describes.
-- Uses a hosted vision LLM (Claude). The brief mentions a past production
-  firewall issue with a vendor's cloud ML endpoints; that's described as a
-  production-environment problem from an earlier pilot, not a constraint on
-  this prototype, which is explicitly framed as a standalone POC. A real
-  procurement path would need to confirm this before moving past prototype.
+- Default extraction (OCR) has no contextual judgment beyond a layout
+  heuristic — see `SPEC.md` §5 for exactly what it assumes about label
+  layout and where that could break. The Claude vision alternative is kept
+  working precisely so a real production conversation isn't starting from
+  scratch.
 - No persistent database — batch results live in memory for the life of
   the process, consistent with "we're not storing anything sensitive for
   this exercise."
-- Poor-quality/skewed/glare-y photos are handled as best-effort by the
-  vision model's own judgment, not specially pre-processed — called out in
-  the brief itself as possibly out of scope.
+- Poor-quality/skewed/glare-y photos are a known weak point of the default
+  OCR backend (confirmed against `testdata/labels/09_low_quality_blurry.jpg`,
+  which fails extraction rather than reading through the noise) — called
+  out in the brief itself as possibly out of scope, and the documented
+  reason to reach for `EXTRACTION_BACKEND=claude` if this matters for a
+  given deployment.
 
 ## Setup
 
-Requires Go 1.24+ and an Anthropic API key.
+Requires Go 1.24+ and, for the default OCR backend, Tesseract:
 
 ```bash
-cp .env.example .env
-# edit .env and set ANTHROPIC_API_KEY
+# Debian/Ubuntu
+sudo apt-get install -y tesseract-ocr
+
+cp .env.example .env   # defaults to EXTRACTION_BACKEND=ocr, no API key needed
 ```
+
+To use the Claude vision backend instead, set `EXTRACTION_BACKEND=claude`
+and `ANTHROPIC_API_KEY` in `.env`.
 
 ## Run
 
@@ -99,10 +114,12 @@ label-1.jpg,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,7
 
 ## Deployment
 
-Single static binary, no external runtime dependencies beyond network
-access to `api.anthropic.com`. Containerize and deploy to any platform that
-runs a Go binary (Fly.io, Cloud Run, Render, etc.); set `ANTHROPIC_API_KEY`
-as a platform secret.
+Single static Go binary plus the `tesseract` runtime dependency (the
+default OCR backend shells out to it — it's not statically linked in).
+Containerize with `tesseract-ocr` installed in the image and deploy to any
+platform that runs a container (Fly.io, Cloud Run, Render, etc.). No
+secrets required in the default configuration; set `EXTRACTION_BACKEND=claude`
+and `ANTHROPIC_API_KEY` as a platform secret only if switching backends.
 
 ```bash
 go build -o server ./cmd/server

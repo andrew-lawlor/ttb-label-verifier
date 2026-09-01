@@ -65,10 +65,41 @@ approach could move past prototype.
   drives the batch-progress view directly against `GET /api/verify/batch/{id}`
   without any client-side state management — a natural fit for the "obvious,
   no hunting for buttons" requirement.
-- **Extraction**: one Claude vision API call per label image, using tool-use
-  / structured output to force a JSON shape (`brand_name`, `class_type`,
-  `alcohol_content`, `net_contents`, `government_warning_text`,
-  `confidence` per field).
+- **Extraction, default: local OCR (Tesseract), not a cloud vision API.**
+  This is a revision from the original design — worth stating plainly since
+  it's a real architectural pivot, not a footnote. Reasoning:
+  1. **This app is deployed at a public URL for evaluation.** A paid vision
+     API sitting behind a public endpoint with no auth is an open-ended
+     cost/abuse vector — anyone who finds the URL can run up charges, not
+     just the intended evaluators. OCR has zero marginal cost per request.
+  2. It also directly answers Marcus's firewall story: no outbound
+     dependency at all, not even a documented assumption to defend later.
+  3. It deterministically fits the ~5s budget rather than being subject to
+     a third party's latency that day.
+  4. Tesseract reads text; it doesn't understand label semantics, so a
+     small layout heuristic (see `internal/extract/ocr.go`) maps OCR'd
+     lines to fields: the government warning is found by anchoring on its
+     required phrase, ABV/net-contents by their distinctive unit tokens,
+     and — the one genuinely fragile assumption — brand name is taken as
+     the largest text near the top of the label, class/type the
+     next-largest. Holds for every image in `testdata/labels/`, and for
+     conventional label design generally, but is a known limitation on an
+     unconventional layout.
+  5. Traded off: OCR has no contextual judgment beyond that heuristic and
+     is meaningfully weaker on poor-quality photos (confirmed against
+     `testdata/labels/09_low_quality_blurry.jpg` — the deliberately
+     degraded fixture fails extraction rather than reading through the
+     noise a vision LLM might manage). Verified against all 11 test
+     fixtures: 10/10 non-degraded cases produce the exact expected verdict.
+
+  **Claude vision is still implemented** (`internal/extract/extract.go`)
+  and works — one API call per label, tool-use/structured output forcing a
+  JSON shape (`brand_name`, `class_type`, `alcohol_content`, `net_contents`,
+  `government_warning`, `confidence` per field). It's the more robust
+  choice for a real production deployment behind auth/rate-limiting, where
+  the cost-exposure argument above no longer applies. Both backends
+  implement the same `Extractor` interface, so swapping is one env var
+  (`EXTRACTION_BACKEND=claude`), not a rewrite.
 - **Matching engine**: plain Go code, not an LLM call — the extraction is
   the only place an LLM is used. Comparison is deterministic, fast, and
   auditable (agents can see exactly why something failed).

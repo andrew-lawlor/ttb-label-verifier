@@ -52,6 +52,18 @@ func Result(id, filename string, app model.ApplicationFields, ext model.Extracte
 	}
 }
 
+// lowConfidenceDetail distinguishes "extraction found nothing for this
+// field" (confidence 0 — e.g. OCR found no line matching this field's
+// pattern) from "extraction found something but isn't sure of it," since
+// both route to needs_review but mean different things to the agent
+// reading the result.
+func lowConfidenceDetail(ext model.FieldExtraction) string {
+	if ext.Value == "" {
+		return "field not found in the label image — human check needed"
+	}
+	return "low extraction confidence"
+}
+
 var normalizeRe = regexp.MustCompile(`[^a-z0-9 ]+`)
 var whitespaceRe = regexp.MustCompile(`\s+`)
 
@@ -72,9 +84,9 @@ func fuzzyField(name, appValue string, ext model.FieldExtraction) model.FieldRes
 	verdict := model.VerdictFail
 	detail := ""
 	switch {
-	case ext.Confidence > 0 && ext.Confidence < lowConfidenceCutoff:
+	case ext.Confidence < lowConfidenceCutoff:
 		verdict = model.VerdictNeedsReview
-		detail = "low extraction confidence"
+		detail = lowConfidenceDetail(ext)
 	case sim >= fuzzyPassThreshold:
 		verdict = model.VerdictPass
 	case sim >= fuzzyReviewThreshold:
@@ -108,9 +120,9 @@ func warningField(appValue string, ext model.FieldExtraction) model.FieldResult 
 	verdict := model.VerdictFail
 	detail := ""
 	switch {
-	case ext.Confidence > 0 && ext.Confidence < lowConfidenceCutoff:
+	case ext.Confidence < lowConfidenceCutoff:
 		verdict = model.VerdictNeedsReview
-		detail = "low extraction confidence"
+		detail = lowConfidenceDetail(ext)
 	case a == b:
 		verdict = model.VerdictPass
 	default:
@@ -140,9 +152,9 @@ func abvField(appValue string, ext model.FieldExtraction) model.FieldResult {
 	verdict := model.VerdictFail
 	detail := ""
 	switch {
-	case ext.Confidence > 0 && ext.Confidence < lowConfidenceCutoff:
+	case ext.Confidence < lowConfidenceCutoff:
 		verdict = model.VerdictNeedsReview
-		detail = "low extraction confidence"
+		detail = lowConfidenceDetail(ext)
 	case !aOK || !bOK:
 		verdict = model.VerdictNeedsReview
 		detail = "could not parse alcohol content from one or both values"
@@ -190,9 +202,9 @@ func netContentsField(appValue string, ext model.FieldExtraction) model.FieldRes
 	verdict := model.VerdictFail
 	detail := ""
 	switch {
-	case ext.Confidence > 0 && ext.Confidence < lowConfidenceCutoff:
+	case ext.Confidence < lowConfidenceCutoff:
 		verdict = model.VerdictNeedsReview
-		detail = "low extraction confidence"
+		detail = lowConfidenceDetail(ext)
 	case !aOK || !bOK:
 		verdict = model.VerdictNeedsReview
 		detail = "could not parse net contents from one or both values"
