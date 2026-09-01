@@ -285,7 +285,7 @@ func (s *Server) handleVerifyBatch(w http.ResponseWriter, r *http.Request) {
 	// running after this handler returns the batch ID.
 	id := s.batch.Submit(context.Background(), items)
 
-	s.render(w, "batch_status_fragment.html", s.batch.Status(id))
+	s.render(w, "batch_status_fragment.html", newBatchStatusView(s.batch.Status(id)))
 }
 
 func (s *Server) handleBatchStatus(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +295,34 @@ func (s *Server) handleBatchStatus(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.render(w, "batch_status_fragment.html", status)
+	s.render(w, "batch_status_fragment.html", newBatchStatusView(status))
+}
+
+// batchStatusView adds presentation-only pass/fail/review counts on top of
+// model.BatchStatus (embedded, so existing template field references like
+// .ID/.Done/.Completed/.Results keep working unchanged) — a glanceable
+// summary line for a batch that might be 200-300 rows long, without
+// putting UI-only fields on the core domain type.
+type batchStatusView struct {
+	*model.BatchStatus
+	PassCount   int
+	FailCount   int
+	ReviewCount int
+}
+
+func newBatchStatusView(status *model.BatchStatus) batchStatusView {
+	v := batchStatusView{BatchStatus: status}
+	for _, r := range status.Results {
+		switch r.OverallVerdict {
+		case model.VerdictPass:
+			v.PassCount++
+		case model.VerdictFail:
+			v.FailCount++
+		case model.VerdictNeedsReview:
+			v.ReviewCount++
+		}
+	}
+	return v
 }
 
 func verifyOne(ctx context.Context, extractor Extractor, filename string, app model.ApplicationFields, imageBytes []byte, mediaType string) model.VerifyResult {

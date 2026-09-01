@@ -3,6 +3,11 @@
 
   {{if .Done}}
     <div class="banner pass">Done — {{.Completed}} of {{.Total}} labels checked</div>
+    <p class="batch-summary">
+      <span class="tag pass">{{.PassCount}} passed</span>
+      <span class="tag review">{{.ReviewCount}} need review</span>
+      <span class="tag fail">{{.FailCount}} failed</span>
+    </p>
   {{else}}
     <p><strong>Checking labels&hellip; {{.Completed}} of {{.Total}} done</strong></p>
     <div class="progress-bar"><div class="progress-bar-fill" style="width: {{progressPercent .Completed .Total}}%"></div></div>

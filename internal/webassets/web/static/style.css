@@ -160,11 +160,23 @@ details table.results { margin-top: 0.5rem; }
 .banner.review { background: #fff6de; color: #8a6300; border: 2px solid #8a6300; }
 .banner.fail   { background: #fdecec; color: #9c1c1c; border: 2px solid #9c1c1c; }
 
+.batch-summary {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+
 table.results {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
   background: white;
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 table.results th, table.results td {
   text-align: left;
@@ -208,6 +220,7 @@ table.results th { background: #eee; }
 .progress-bar-fill {
   height: 100%;
   background: #0b4f8a;
+  transition: width 0.4s ease;
 }
 
 .help {
