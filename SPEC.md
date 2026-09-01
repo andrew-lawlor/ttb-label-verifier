@@ -157,7 +157,52 @@ test against, against a synthetic single-page PDF with known text placed
 at the same field coordinates (see commit history / test comments for that
 account) — both read back correctly.
 
-## 7. Field matching rules
+## 7. Batch manifest UX: filenames shouldn't be manually typed
+
+The original batch design required a CSV manifest whose `filename` column
+had to exactly match each uploaded image's filename, typed by hand —
+tedious at 200-300 rows, and worse, error-prone in a way that actively
+misleads: a typo produced a full field-by-field mismatch indistinguishable
+from a label that genuinely failed every check, not an obvious "you
+mistyped this" error. Fixed at two levels:
+
+1. **A missing manifest row is now its own explicit error**
+   (`batch.Item.SkipReason`, checked in `internal/server/server.go`'s
+   `handleVerifyBatch`), reported as "no manifest row found for filename
+   %q" and skipping extraction entirely — not run through the matcher
+   against blank data. Verified: `TestSkipReasonBypassesExtractionAndReportsError`
+   asserts the extractor is never even called for a skipped item.
+2. **The batch page now defaults to filling in application data per label
+   directly on the page** (`internal/webassets/web/static/batch.js`),
+   with the filename read straight from each selected `File` object —
+   there's nothing to type or mismatch, because the filename is never
+   manually entered at all in this mode. CSV upload remains available
+   (toggle link) for a genuine bulk workflow where the data already
+   exists in a spreadsheet from another source; for that path, the
+   downloadable template (§ below) plus the new explicit-error behavior
+   are what address the burden.
+
+**Implementation note, and an honest testing gap:** this app has zero
+third-party JS dependencies (only htmx, vendored) — the per-row UI is
+plain DOM manipulation, no framework. It still submits through htmx's
+existing, already-proven `hx-post` handling on `#batch-form`, completely
+unchanged; the new JS's only job is keeping a hidden file input populated
+with a client-side-built CSV Blob (row mode) or the user's selected file
+(CSV mode) via the `DataTransfer` API. It's kept in sync continuously —
+on every keystroke and file selection — rather than assembled "at submit
+time," specifically to avoid any dependency on event-listener ordering
+between this script and htmx's own submit handling. This environment has
+no browser available to interactively test the result: the CSV-escaping
+logic was cross-validated against both Python's `csv` module and (more
+importantly) Go's actual `encoding/csv` reader — the real server-side
+parser — across quote/comma/newline/empty-string cases, all correct
+except `\r\n` inside a quoted field, which Go's reader itself normalizes
+to `\n` (documented stdlib behavior, not an encoding bug) and which isn't
+reachable anyway through a single-line `<input type="text">`. The DOM/
+event-wiring side was carefully reviewed but not run in an actual browser
+— worth a manual click-through before relying on it.
+
+## 8. Field matching rules
 
 | Field | Match type | Notes |
 |---|---|---|
@@ -205,7 +250,7 @@ there; these three don't have that same justification. Kept as manual
 entry (plus the PDF pre-fill for brand name, §6) on purpose, not by
 default.
 
-## 8. API sketch
+## 9. API sketch
 
 - `POST /api/verify` — multipart: one label image + application fields (JSON). Synchronous, returns verdict in ~5s.
 - `POST /api/verify/batch` — multipart: N label images + a manifest (CSV/JSON mapping filename → application fields). Returns a `batch_id` immediately.
@@ -214,13 +259,13 @@ default.
 - `GET /version` — the git commit SHA the running binary was built from (injected at build time via `-ldflags`, empty/`dev` for a plain local `go run`). Deploys here are manual (`git pull` + `docker compose up -d --build` on the VPS, no CI/CD), so this is how "is the server running the latest code" gets answered without SSHing in to compare by hand — see `DEPLOY.md` "Checking what's running."
 - Batch worker pool: bounded concurrency (e.g. 10-20 in flight) against the vision API, so 200-300 labels finish in a couple of minutes rather than serially at ~5s each (~25 min).
 
-## 9. Error handling
+## 10. Error handling
 
 - Unreadable/corrupt image → explicit "could not read label" result, not a silent fail.
 - Low-confidence extraction (model itself flags uncertainty) → surfaced as "needs review," same as the fuzzy mid-band.
 - Partial batch failure → batch keeps going; failed items are reported individually, one bad file doesn't kill the run.
 
-## 10. Deployment
+## 11. Deployment
 
 - Deployed via Docker Compose on a Debian VPS (Hetzner) rather than a
   managed container platform (Fly.io/Cloud Run) — a deliberate choice, not
@@ -248,13 +293,13 @@ default.
   catching it in the same limit would break the progress UI.
 - Deliverables: public GitHub repo + live deployed URL, per the brief. See `DEPLOY.md` for the exact runbook.
 
-## 11. Stretch goals (only if core is solid and time remains)
+## 12. Stretch goals (only if core is solid and time remains)
 
 - Basic image-quality pre-check (blur/glare) with a friendly re-upload prompt — Jenny's ask, explicitly optional.
 - CSV export of batch results.
 - Confidence visualization in the UI (color-coded pass/review/fail).
 
-## 12. Non-goals reminder
+## 13. Non-goals reminder
 
 Per the brief's own evaluation criteria: a complete, clean core beats an
 ambitious but partial build. Batch + single-label verification with solid

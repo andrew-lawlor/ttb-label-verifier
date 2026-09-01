@@ -21,12 +21,12 @@
   </header>
   <main>
     <p class="help">
-      For big batches: upload every label photo at once, plus one manifest
-      file that lists the application data for each one. We'll check them
-      all and show progress as results come in.
+      For big batches: upload every label photo at once, then fill in the
+      application data for each one below. We'll check them all and show
+      progress as results come in.
     </p>
 
-    <form hx-post="/api/verify/batch" hx-target="#batch-status" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+    <form id="batch-form" hx-post="/api/verify/batch" hx-target="#batch-status" hx-swap="innerHTML" hx-encoding="multipart/form-data">
       <fieldset>
         <legend>Label Photos</legend>
         <label for="label_images">Label images (select all at once)</label>
@@ -34,22 +34,45 @@
       </fieldset>
 
       <fieldset>
-        <legend>Manifest</legend>
+        <legend>Application Data</legend>
         <p class="help">
-          Build this from the application data on file in COLA — this tool
+          Enter these from the application on file in COLA — this tool
           doesn't have access to COLA itself, so results are only as
-          accurate as the values in this file.
+          accurate as what's entered here. The filename for each label is
+          filled in automatically from the images you selected above, so
+          there's nothing to type or mismatch there.
         </p>
-        <label for="manifest">Manifest CSV</label>
-        <input type="file" id="manifest" name="manifest" accept=".csv,text/csv" required>
+
+        <div id="rows-section">
+          <div id="per-image-rows">
+            <p class="help">Select label images above to fill in details for each one here.</p>
+          </div>
+        </div>
+
         <p class="help">
-          Columns required: <code>filename, brand_name, class_type, alcohol_content, net_contents</code>.
-          The <code>filename</code> value must match each uploaded image's filename exactly.
-          No government-warning column — every label is checked against the
-          one federally-required text (27 CFR § 16.21) automatically.
-          <a href="/static/manifest-template.csv" download>Download a template</a> —
-          opens fine in Excel; just don't "Save As" a different format when you're done editing it.
+          <a href="#" id="toggle-csv-mode">Have a CSV manifest instead? Upload it here.</a>
         </p>
+
+        <div id="csv-upload-section" hidden>
+          <label for="manifest_csv_input">Manifest CSV</label>
+          <input type="file" id="manifest_csv_input" accept=".csv,text/csv">
+          <p class="help">
+            Columns required: <code>filename, brand_name, class_type, alcohol_content, net_contents</code>.
+            The <code>filename</code> value must match each uploaded image's filename exactly.
+            No government-warning column — every label is checked against the
+            one federally-required text (27 CFR § 16.21) automatically.
+            <a href="/static/manifest-template.csv" download>Download a template</a>.
+          </p>
+          <p class="help"><a href="#" id="toggle-row-mode">Back to filling in details per label instead</a></p>
+        </div>
+
+        <!-- Actual submitted field. Never shown or filled in directly by a
+             person -- JS keeps it in sync with whichever mode is active
+             (see /static/batch.js) so by the time this form is submitted,
+             it's already correct. Named dynamically (only one of this and
+             #manifest_csv_input carries name="manifest" at a time) so
+             exactly one manifest part is ever sent. -->
+        <input type="file" id="manifest_hidden" hidden>
       </fieldset>
 
       <button type="submit">Start Batch Check</button>
@@ -58,5 +81,6 @@
 
     <div id="batch-status"></div>
   </main>
+  <script src="/static/batch.js"></script>
 </body>
 </html>

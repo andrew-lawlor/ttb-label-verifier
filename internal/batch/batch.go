@@ -31,6 +31,14 @@ type Item struct {
 	ImageBytes  []byte
 	MediaType   string
 	Application model.ApplicationFields
+	// SkipReason, if set, short-circuits processing: no extraction call is
+	// made, and the result is reported as this error instead. Used for a
+	// filename with no matching manifest row, so that shows up as an
+	// unambiguous "couldn't check this" rather than silently running the
+	// image through the matcher against blank application data, which
+	// would produce a full mismatch indistinguishable from a label that
+	// genuinely fails every field.
+	SkipReason string
 }
 
 // job wraps a BatchStatus with the single mutex that guards every read and
@@ -109,6 +117,14 @@ func run(ctx context.Context, client Extractor, j *job, items []Item) {
 
 func processOne(ctx context.Context, client Extractor, item Item) model.VerifyResult {
 	id := newID()
+	if item.SkipReason != "" {
+		return model.VerifyResult{
+			ID:             id,
+			Filename:       item.Filename,
+			OverallVerdict: model.VerdictFail,
+			Error:          item.SkipReason,
+		}
+	}
 	extracted, err := client.Extract(ctx, item.ImageBytes, item.MediaType)
 	if err != nil {
 		return model.VerifyResult{

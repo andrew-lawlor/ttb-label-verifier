@@ -3,6 +3,7 @@ package batch
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -112,6 +113,89 @@ func TestSubmitReportsPartialFailuresWithoutStoppingBatch(t *testing.T) {
 	}
 	if !sawFailure {
 		t.Fatalf("expected to find the failed item in results")
+	}
+}
+
+// trackingExtractor records every filename it was actually asked to
+// extract, so a test can assert an item with SkipReason set never reaches
+// the extractor at all.
+type trackingExtractor struct {
+	mu     sync.Mutex
+	called map[string]bool
+}
+
+func (f *trackingExtractor) Extract(ctx context.Context, imageBytes []byte, mediaType string) (model.ExtractedFields, error) {
+	f.mu.Lock()
+	if f.called == nil {
+		f.called = map[string]bool{}
+	}
+	f.called[string(imageBytes)] = true
+	f.mu.Unlock()
+
+	v := model.FieldExtraction{Value: "match", Confidence: 0.95}
+	return model.ExtractedFields{
+		BrandName:         v,
+		ClassType:         v,
+		AlcoholContent:    model.FieldExtraction{Value: "45%", Confidence: 0.95},
+		NetContents:       model.FieldExtraction{Value: "750 mL", Confidence: 0.95},
+		GovernmentWarning: model.FieldExtraction{Value: match.CanonicalGovernmentWarning, Confidence: 0.95},
+	}, nil
+}
+
+// TestSkipReasonBypassesExtractionAndReportsError covers the fix for a
+// mistyped/missing manifest filename: it must show up as its own explicit
+// error, not silently run through extraction+matching against blank
+// application data (which would look like a real compliance failure
+// rather than a data-entry mistake).
+func TestSkipReasonBypassesExtractionAndReportsError(t *testing.T) {
+	items := []Item{
+		{Filename: "no-manifest-row.jpg", ImageBytes: []byte("no-manifest-row.jpg"), SkipReason: `no manifest row found for filename "no-manifest-row.jpg"`},
+		{Filename: "ok.jpg", ImageBytes: []byte("ok.jpg"), Application: model.ApplicationFields{
+			BrandName: "match", ClassType: "match", AlcoholContent: "45%", NetContents: "750 mL",
+		}},
+	}
+
+	extractor := &trackingExtractor{}
+	m := NewManager(extractor)
+	id := m.Submit(context.Background(), items)
+
+	deadline := time.Now().Add(5 * time.Second)
+	var status *model.BatchStatus
+	for time.Now().Before(deadline) {
+		status = m.Status(id)
+		if status.Done {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if status == nil || !status.Done {
+		t.Fatalf("batch did not complete in time")
+	}
+
+	for _, r := range status.Results {
+		if r.Filename == "no-manifest-row.jpg" {
+			if r.OverallVerdict != model.VerdictFail {
+				t.Errorf("expected fail verdict, got %s", r.OverallVerdict)
+			}
+			if r.Error == "" {
+				t.Errorf("expected the skip reason to be reported as an error")
+			}
+			if len(r.Fields) != 0 {
+				t.Errorf("expected no field-by-field breakdown for a skipped item, got %+v", r.Fields)
+			}
+		}
+		if r.Filename == "ok.jpg" && r.OverallVerdict != model.VerdictPass {
+			t.Errorf("expected ok.jpg to pass normally, got %+v", r)
+		}
+	}
+
+	extractor.mu.Lock()
+	defer extractor.mu.Unlock()
+	if extractor.called["no-manifest-row.jpg"] {
+		t.Errorf("extractor was called for a skipped item — should never have made the API/OCR call at all")
+	}
+	if !extractor.called["ok.jpg"] {
+		t.Errorf("expected the normal item to have actually been extracted")
 	}
 }
 

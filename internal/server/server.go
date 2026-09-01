@@ -255,18 +255,24 @@ func (s *Server) handleVerifyBatch(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		app, ok := manifest[header.Filename]
+		var skipReason string
 		if !ok {
-			// No manifest row for this file — still process it so the
-			// agent sees a per-file result rather than a silently
-			// dropped upload, but every field will show as a mismatch
-			// against blank application data.
-			app = model.ApplicationFields{}
+			// No manifest row for this file. Report it as its own clear
+			// error rather than silently running it through the matcher
+			// against blank application data — that would produce a full
+			// mismatch indistinguishable from a label that genuinely
+			// fails every field, which is actively misleading for a
+			// typo'd filename rather than just unhelpful.
+			skipReason = fmt.Sprintf(
+				"no manifest row found for filename %q — check that it matches exactly (case-sensitive)",
+				header.Filename)
 		}
 		items = append(items, batch.Item{
 			Filename:    header.Filename,
 			ImageBytes:  imageBytes,
 			MediaType:   mediaType,
 			Application: app,
+			SkipReason:  skipReason,
 		})
 	}
 

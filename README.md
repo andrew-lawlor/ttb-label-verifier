@@ -143,15 +143,26 @@ real form actually provides as independent application data. See
 `internal/extract/pdfform_test.go` to confirm the crop region doesn't pick
 up stray text from the adjacent field labels.
 
-## Batch manifest format
+## Batch manifest
 
-The batch page needs a CSV alongside the label images, mapping each
-image's filename to its application data. No `government_warning` column —
-every label is checked against the one federally-required text
+**Default: fill in application data per label directly on the batch
+page.** Select the label images first — a row appears for each one, with
+the filename already filled in (read from the file itself, not typed), so
+there's nothing to mismatch. This is a client-side-only feature
+(`internal/webassets/web/static/batch.js`, plain JS, no framework/build
+step) that builds the same CSV manifest under the hood and submits through
+the same existing endpoint — no server changes were needed for it.
+
+**CSV upload is still available** (toggle link on the page) for a genuine
+bulk workflow where the data already exists in a spreadsheet — mapping
+each image's filename to its application data. No `government_warning`
+column — every label is checked against the one federally-required text
 automatically (see "Approach, in brief" above). A downloadable template
 (`internal/webassets/web/static/manifest-template.csv`, linked from the
 batch page) opens fine in Excel — it stays a valid CSV as long as it's
-edited and saved in place, not "Save As"'d to a different format:
+edited and saved in place, not "Save As"'d to a different format. A
+filename with no matching manifest row now shows as its own explicit error
+rather than a misleading full-field mismatch:
 
 ```csv
 filename,brand_name,class_type,alcohol_content,net_contents
@@ -175,7 +186,7 @@ exact runbook. No secrets required in the default configuration; set
 
 The same `Dockerfile` works unchanged on Fly.io, Cloud Run, or any other
 container platform, if a managed-TLS/managed-supervision platform is
-preferred over VPS ops — see `SPEC.md` §10 for that trade-off.
+preferred over VPS ops — see `SPEC.md` §11 for that trade-off.
 
 ```bash
 docker compose up -d --build
