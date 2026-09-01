@@ -157,3 +157,13 @@ table.results th { background: #eee; }
   color: #555;
   font-size: 0.9rem;
 }
+
+.warning-text {
+  background: #f2f2ee;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: #333;
+  margin-top: 0.5rem;
+}

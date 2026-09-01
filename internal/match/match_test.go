@@ -1,6 +1,7 @@
 package match
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/andrewlawlor/ttb-label-verifier/internal/model"
@@ -29,20 +30,20 @@ func TestBrandNameBigDifferenceFails(t *testing.T) {
 
 // TestWarningTitleCaseFails is Jenny's exact example: "Government
 // Warning" in title case instead of "GOVERNMENT WARNING" must be rejected,
-// even though it's a near-identical string.
+// even though it's a near-identical string. Checked against
+// CanonicalGovernmentWarning directly — there's no applicant-supplied
+// value for this field (see ApplicationFields).
 func TestWarningTitleCaseFails(t *testing.T) {
-	app := "GOVERNMENT WARNING: (1) According to the Surgeon General..."
-	label := "Government Warning: (1) According to the Surgeon General..."
-	r := warningField(app, ext(label))
+	label := strings.Replace(CanonicalGovernmentWarning, "GOVERNMENT WARNING", "Government Warning", 1)
+	r := warningField(ext(label))
 	if r.Verdict != model.VerdictFail {
 		t.Fatalf("expected fail on case mismatch, got %s", r.Verdict)
 	}
 }
 
 func TestWarningExactMatchPassesDespiteLineWrapDifferences(t *testing.T) {
-	app := "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy."
-	label := "GOVERNMENT WARNING: (1) According to the Surgeon\nGeneral, women should   not drink alcoholic beverages during pregnancy."
-	r := warningField(app, ext(label))
+	label := strings.ReplaceAll(CanonicalGovernmentWarning, " women should not", "\nwomen should   not")
+	r := warningField(ext(label))
 	if r.Verdict != model.VerdictPass {
 		t.Fatalf("expected pass, got %s: %s", r.Verdict, r.Detail)
 	}
@@ -78,18 +79,17 @@ func TestLowConfidenceExtractionForcesReview(t *testing.T) {
 
 func TestOverallVerdictIsWorstOfFields(t *testing.T) {
 	app := model.ApplicationFields{
-		BrandName:         "Old Tom Distillery",
-		ClassType:         "Kentucky Straight Bourbon Whiskey",
-		AlcoholContent:    "45% Alc./Vol.",
-		NetContents:       "750 mL",
-		GovernmentWarning: "GOVERNMENT WARNING: text",
+		BrandName:      "Old Tom Distillery",
+		ClassType:      "Kentucky Straight Bourbon Whiskey",
+		AlcoholContent: "45% Alc./Vol.",
+		NetContents:    "750 mL",
 	}
 	extracted := model.ExtractedFields{
 		BrandName:         ext("Old Tom Distillery"),
 		ClassType:         ext("Kentucky Straight Bourbon Whiskey"),
 		AlcoholContent:    ext("45% Alc./Vol."),
 		NetContents:       ext("750 mL"),
-		GovernmentWarning: ext("Government Warning: text"), // case mismatch -> fail
+		GovernmentWarning: ext("not the required statement"), // mismatch -> fail
 	}
 	res := Result("1", "label.jpg", app, extracted)
 	if res.OverallVerdict != model.VerdictFail {

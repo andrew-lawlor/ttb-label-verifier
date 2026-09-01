@@ -21,6 +21,17 @@ const (
 	netContentsTolerance = 0.02 // 2% relative tolerance, covers rounding across units
 )
 
+// CanonicalGovernmentWarning is the federally-mandated warning statement
+// (27 CFR § 16.21) every alcoholic beverage label must carry verbatim,
+// regardless of product type. Unlike the other four fields, this isn't
+// applicant-declared data with an independent source to compare against —
+// there's one legally correct text, and every label is checked against it
+// directly rather than against a per-application value.
+const CanonicalGovernmentWarning = "GOVERNMENT WARNING: (1) According to the Surgeon General, " +
+	"women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. " +
+	"(2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, " +
+	"and may cause health problems."
+
 // Result compares one label's extracted fields against the submitted
 // application fields and produces the full per-field breakdown plus an
 // overall verdict (worst-of-fields).
@@ -30,7 +41,7 @@ func Result(id, filename string, app model.ApplicationFields, ext model.Extracte
 		fuzzyField("class_type", app.ClassType, ext.ClassType),
 		abvField(app.AlcoholContent, ext.AlcoholContent),
 		netContentsField(app.NetContents, ext.NetContents),
-		warningField(app.GovernmentWarning, ext.GovernmentWarning),
+		warningField(ext.GovernmentWarning),
 	}
 
 	overall := model.VerdictPass
@@ -108,14 +119,17 @@ func fuzzyField(name, appValue string, ext model.FieldExtraction) model.FieldRes
 }
 
 // warningField is intentionally the strictest rule in the system: the
-// government warning must match word-for-word, including case. Only
-// whitespace differences (line wrapping on the label vs. the application
-// text) are normalized away. See SPEC.md section 6 / Jenny's interview.
-func warningField(appValue string, ext model.FieldExtraction) model.FieldResult {
+// government warning must match CanonicalGovernmentWarning word-for-word,
+// including case. Only whitespace differences (line wrapping on the label)
+// are normalized away. See SPEC.md §7 / Jenny's interview. Unlike the
+// other four fields, there's no applicant-supplied value to compare
+// against — see the ApplicationFields doc comment and
+// CanonicalGovernmentWarning's.
+func warningField(ext model.FieldExtraction) model.FieldResult {
 	normSpace := func(s string) string {
 		return strings.TrimSpace(whitespaceRe.ReplaceAllString(s, " "))
 	}
-	a, b := normSpace(appValue), normSpace(ext.Value)
+	a, b := normSpace(CanonicalGovernmentWarning), normSpace(ext.Value)
 
 	verdict := model.VerdictFail
 	detail := ""
@@ -127,12 +141,12 @@ func warningField(appValue string, ext model.FieldExtraction) model.FieldResult 
 		verdict = model.VerdictPass
 	default:
 		verdict = model.VerdictFail
-		detail = "government warning text does not match exactly (wording, case, or punctuation)"
+		detail = "government warning text does not match the required statement exactly (wording, case, or punctuation)"
 	}
 
 	return model.FieldResult{
 		Field:            "government_warning",
-		ApplicationValue: appValue,
+		ApplicationValue: CanonicalGovernmentWarning,
 		ExtractedValue:   ext.Value,
 		Verdict:          verdict,
 		Detail:           detail,

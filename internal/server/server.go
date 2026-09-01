@@ -93,7 +93,16 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "index.html", brandNameFieldView{})
+	s.render(w, "index.html", indexView{
+		BrandName:        brandNameFieldView{},
+		CanonicalWarning: match.CanonicalGovernmentWarning,
+	})
+}
+
+// indexView is the single-label page's template data.
+type indexView struct {
+	BrandName        brandNameFieldView
+	CanonicalWarning string
 }
 
 // brandNameFieldView renders the "brand_name_field" partial: the Brand
@@ -181,11 +190,10 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app := model.ApplicationFields{
-		BrandName:         r.FormValue("brand_name"),
-		ClassType:         r.FormValue("class_type"),
-		AlcoholContent:    r.FormValue("alcohol_content"),
-		NetContents:       r.FormValue("net_contents"),
-		GovernmentWarning: r.FormValue("government_warning"),
+		BrandName:      r.FormValue("brand_name"),
+		ClassType:      r.FormValue("class_type"),
+		AlcoholContent: r.FormValue("alcohol_content"),
+		NetContents:    r.FormValue("net_contents"),
 	}
 
 	result := verifyOne(ctx, s.extractor, header.Filename, app, imageBytes, mediaType)
@@ -196,7 +204,8 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 // handleVerifyBatch accepts N images + a CSV manifest mapping filename to
 // application fields, and starts an async batch job.
 //
-// Manifest CSV columns: filename,brand_name,class_type,alcohol_content,net_contents,government_warning
+// Manifest CSV columns: filename,brand_name,class_type,alcohol_content,net_contents
+// (no government_warning column — see parseManifest)
 func (s *Server) handleVerifyBatch(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(200 << 20); err != nil {
 		s.renderError(w, "Could not read the uploaded batch. Please try again.", http.StatusBadRequest)
@@ -322,7 +331,10 @@ func parseManifest(r io.Reader) (map[string]model.ApplicationFields, error) {
 	for i, name := range header {
 		col[strings.TrimSpace(strings.ToLower(name))] = i
 	}
-	required := []string{"filename", "brand_name", "class_type", "alcohol_content", "net_contents", "government_warning"}
+	// No government_warning column: that field isn't applicant-declared
+	// data (see model.ApplicationFields), so every row is checked against
+	// match.CanonicalGovernmentWarning regardless of what's in the CSV.
+	required := []string{"filename", "brand_name", "class_type", "alcohol_content", "net_contents"}
 	for _, c := range required {
 		if _, ok := col[c]; !ok {
 			return nil, fmt.Errorf("missing required column %q", c)
@@ -335,11 +347,10 @@ func parseManifest(r io.Reader) (map[string]model.ApplicationFields, error) {
 			continue
 		}
 		out[row[col["filename"]]] = model.ApplicationFields{
-			BrandName:         row[col["brand_name"]],
-			ClassType:         row[col["class_type"]],
-			AlcoholContent:    row[col["alcohol_content"]],
-			NetContents:       row[col["net_contents"]],
-			GovernmentWarning: row[col["government_warning"]],
+			BrandName:      row[col["brand_name"]],
+			ClassType:      row[col["class_type"]],
+			AlcoholContent: row[col["alcohol_content"]],
+			NetContents:    row[col["net_contents"]],
 		}
 	}
 	return out, nil

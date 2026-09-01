@@ -44,7 +44,7 @@
 
       <fieldset>
         <legend>Application Data</legend>
-        {{template "brand_name_field" .}}
+        {{template "brand_name_field" .BrandName}}
 
         <label for="class_type">Class / Type</label>
         <input type="text" id="class_type" name="class_type" required>
@@ -54,9 +54,16 @@
 
         <label for="net_contents">Net Contents</label>
         <input type="text" id="net_contents" name="net_contents" placeholder="e.g. 750 mL" required>
+      </fieldset>
 
-        <label for="government_warning">Government Warning (exact text on file)</label>
-        <textarea id="government_warning" name="government_warning" required></textarea>
+      <fieldset>
+        <legend>Government Warning</legend>
+        <p class="help">
+          Fixed by federal regulation (27 CFR § 16.21) — the exact same
+          wording is required on every product, so there's nothing to type
+          here. Every label is checked against this text directly.
+        </p>
+        <p class="warning-text">{{.CanonicalWarning}}</p>
       </fieldset>
 
       <button type="submit">Check This Label</button>

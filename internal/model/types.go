@@ -3,13 +3,16 @@
 package model
 
 // ApplicationFields is what the agent submits — the data on file, i.e. what
-// the label is supposed to say.
+// the label is supposed to say. Deliberately has no GovernmentWarning
+// field: unlike the other four, that text isn't applicant-declared data —
+// it's fixed by federal regulation (27 CFR § 16.21), identical across
+// every product regardless of type. See match.CanonicalGovernmentWarning,
+// which every label's warning is checked against directly.
 type ApplicationFields struct {
-	BrandName         string `json:"brand_name"`
-	ClassType         string `json:"class_type"`
-	AlcoholContent    string `json:"alcohol_content"` // e.g. "45% Alc./Vol." or "90 Proof"
-	NetContents       string `json:"net_contents"`    // e.g. "750 mL"
-	GovernmentWarning string `json:"government_warning"`
+	BrandName      string `json:"brand_name"`
+	ClassType      string `json:"class_type"`
+	AlcoholContent string `json:"alcohol_content"` // e.g. "45% Alc./Vol." or "90 Proof"
+	NetContents    string `json:"net_contents"`    // e.g. "750 mL"
 }
 
 // ExtractedFields is what the vision model read off the label image.

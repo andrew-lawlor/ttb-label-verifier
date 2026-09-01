@@ -33,6 +33,14 @@ a design decision, is in [`SPEC.md`](./SPEC.md).
   numerically across notations/units, and the government warning is matched
   **exactly** (case, wording, punctuation) since that's the one field the
   brief's interview notes explicitly say must be strict.
+- **Government warning is checked against a fixed constant, not typed in
+  by the agent.** It's federally mandated text (27 CFR § 16.21), identical
+  for every product — there's no real "application says X" for it the way
+  there is for the other four fields. The single-label page shows it
+  read-only instead of an editable textarea, and the batch CSV manifest
+  has no column for it. This also closes a real failure mode the editable
+  version had: a mistyped or stale-pasted warning would fail a label that
+  actually complied.
 - **Batch uploads run as an async job with a bounded worker pool**
   (15 concurrent extraction calls), with htmx polling the job for progress
   — 200-300 labels finish in a couple of minutes instead of ~25 minutes
@@ -134,11 +142,13 @@ up stray text from the adjacent field labels.
 ## Batch manifest format
 
 The batch page needs a CSV alongside the label images, mapping each
-image's filename to its application data:
+image's filename to its application data. No `government_warning` column —
+every label is checked against the one federally-required text
+automatically (see "Approach, in brief" above):
 
 ```csv
-filename,brand_name,class_type,alcohol_content,net_contents,government_warning
-label-1.jpg,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,750 mL,GOVERNMENT WARNING: ...
+filename,brand_name,class_type,alcohol_content,net_contents
+label-1.jpg,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,750 mL
 ```
 
 ## Deployment

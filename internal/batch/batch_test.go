@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewlawlor/ttb-label-verifier/internal/match"
 	"github.com/andrewlawlor/ttb-label-verifier/internal/model"
 )
 
@@ -28,7 +29,7 @@ func (f fakeExtractor) Extract(ctx context.Context, imageBytes []byte, mediaType
 		ClassType:         v,
 		AlcoholContent:    model.FieldExtraction{Value: "45%", Confidence: 0.95},
 		NetContents:       model.FieldExtraction{Value: "750 mL", Confidence: 0.95},
-		GovernmentWarning: v,
+		GovernmentWarning: model.FieldExtraction{Value: match.CanonicalGovernmentWarning, Confidence: 0.95},
 	}, nil
 }
 
@@ -67,7 +68,7 @@ func TestSubmitProcessesAllItemsAndReachesDone(t *testing.T) {
 
 func TestSubmitReportsPartialFailuresWithoutStoppingBatch(t *testing.T) {
 	matchingApp := model.ApplicationFields{
-		BrandName: "match", ClassType: "match", AlcoholContent: "45%", NetContents: "750 mL", GovernmentWarning: "match",
+		BrandName: "match", ClassType: "match", AlcoholContent: "45%", NetContents: "750 mL",
 	}
 	items := []Item{
 		{Filename: "ok-1", ImageBytes: []byte("ok-1"), Application: matchingApp},

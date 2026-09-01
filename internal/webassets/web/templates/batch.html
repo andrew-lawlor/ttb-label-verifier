@@ -34,8 +34,10 @@
         <label for="manifest">Manifest CSV</label>
         <input type="file" id="manifest" name="manifest" accept=".csv,text/csv" required>
         <p class="help">
-          Columns required: <code>filename, brand_name, class_type, alcohol_content, net_contents, government_warning</code>.
+          Columns required: <code>filename, brand_name, class_type, alcohol_content, net_contents</code>.
           The <code>filename</code> value must match each uploaded image's filename exactly.
+          No government-warning column — every label is checked against the
+          one federally-required text (27 CFR § 16.21) automatically.
         </p>
       </fieldset>
 

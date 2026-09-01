@@ -165,13 +165,26 @@ account) — both read back correctly.
 | Class/type | Fuzzy | Same normalization as brand name |
 | Alcohol content | Numeric, tolerance | Parse `%` / proof, compare numerically, small tolerance for rounding (e.g. 45% vs 45.0%) |
 | Net contents | Normalized exact | Normalize units (mL/L/oz) to one unit, then exact compare |
-| Government warning | Exact, normalized whitespace only | Case-sensitive, wording-sensitive; only trims stray whitespace/line breaks. Anything else is a hard fail — this is the one field Jenny called out as needing to be strict |
+| Government warning | Exact, normalized whitespace only, against a fixed constant | Case-sensitive, wording-sensitive; only trims stray whitespace/line breaks. Anything else is a hard fail — this is the one field Jenny called out as needing to be strict |
 
 Every result includes the raw extracted value, the submitted value, the
 verdict, and (for fuzzy fields) the similarity score — agents see *why*, not
 just pass/fail, addressing Dave's "you need judgment" concern by keeping a
 human in the loop for the "needs review" band rather than pretending the
 tool is 100% authoritative.
+
+**Government warning is checked differently from the other four**: it's
+compared against `match.CanonicalGovernmentWarning`, a constant, not an
+application-submitted value. Per §6's research into the real TTB form, this
+text isn't applicant-declared data at all — it's fixed by federal
+regulation (27 CFR § 16.21), word-for-word identical across every product
+regardless of type. `model.ApplicationFields` has no `GovernmentWarning`
+field as a result, the single-label page shows the required text read-only
+instead of an editable textarea, and the batch manifest CSV has no
+`government_warning` column. This is both more accurate to reality and
+removes a real failure mode the editable-field version had: an agent
+mistyping or pasting a stale copy of the warning would previously fail a
+label that actually complied.
 
 ## 8. API sketch
 

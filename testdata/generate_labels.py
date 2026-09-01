@@ -276,7 +276,13 @@ cases.append(dict(
 
 manifest_path = f"{OUT_DIR}/manifest.csv"
 with open(manifest_path, "w", newline="") as f:
-    fieldnames = ["filename", "brand_name", "class_type", "alcohol_content", "net_contents", "government_warning"]
+    # No government_warning column: that field isn't applicant-declared
+    # data (it's fixed by federal regulation, identical for every
+    # product), so the app checks every label against the one required
+    # text automatically rather than a per-row value. Each case dict still
+    # carries a government_warning key (used only to render the label
+    # image's printed warning text), it's just not written to the CSV.
+    fieldnames = ["filename", "brand_name", "class_type", "alcohol_content", "net_contents"]
     writer = csv.DictWriter(f, fieldnames=fieldnames)
     writer.writeheader()
     for c in cases:
