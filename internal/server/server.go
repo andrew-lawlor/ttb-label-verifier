@@ -407,13 +407,22 @@ func parseManifest(r io.Reader) (map[string]model.ApplicationFields, error) {
 }
 
 func (s *Server) render(w http.ResponseWriter, name string, data any) {
+	s.renderStatus(w, http.StatusOK, name, data)
+}
+
+// renderStatus sets the Content-Type header before writing the status code
+// — headers set after WriteHeader are silently dropped by net/http, which
+// is exactly the bug this fixes: renderError used to call w.WriteHeader
+// and then render() (which sets Content-Type) after it, so error responses
+// went out with no Content-Type header at all.
+func (s *Server) renderStatus(w http.ResponseWriter, status int, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func (s *Server) renderError(w http.ResponseWriter, message string, status int) {
-	w.WriteHeader(status)
-	s.render(w, "error_fragment.html", message)
+	s.renderStatus(w, status, "error_fragment.html", message)
 }

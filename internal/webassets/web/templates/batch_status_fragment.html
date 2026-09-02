@@ -1,4 +1,4 @@
-<div id="batch-status"
+<div id="batch-status" data-batch-id="{{.ID}}"
      {{if not .Done}}hx-get="/api/verify/batch/{{.ID}}" hx-trigger="every 2s" hx-swap="outerHTML"{{end}}>
 
   {{if .Done}}
