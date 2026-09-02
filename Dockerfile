@@ -24,6 +24,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build /out/server /usr/local/bin/server
 
+# Runs as an unprivileged user rather than the container-default root —
+# nothing here needs root (port 8080 isn't privileged, and pdfform.go's
+# temp files go to os.TempDir(), i.e. world-writable /tmp).
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser
+USER appuser
+
 ENV PORT=8080
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/server"]
