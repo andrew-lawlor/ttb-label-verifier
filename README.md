@@ -217,3 +217,8 @@ preferred over VPS ops — see `SPEC.md` §11 for that trade-off.
 ```bash
 docker compose up -d --build
 ```
+
+## License
+
+[Blue Oak Model License 1.0.0](./LICENSE) — permissive, plain-language,
+functionally equivalent to MIT.
